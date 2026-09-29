@@ -57,6 +57,32 @@ A lightweight, reliable, containerized web application designed to solve invento
 
 ---
 
+## Item Catalogue (US-01)
+
+The Item Catalogue feature provides full management for retail inventory items.
+
+### Web Pages
+- `GET /` — Redirects to `/items`
+- `GET /items` — Catalogue table listing all items with name, category, price, quantity, reorder threshold, and edit link
+- `GET /items/new` — Form to create a new item
+- `POST /items` — Submit new item creation
+- `GET /items/:id/edit` — Form to edit an existing item
+- `POST /items/:id` — Submit item update
+
+### API Endpoints
+- `GET /api/items` — Retrieve all items (JSON)
+- `GET /api/items/:id` — Retrieve a specific item by ID (JSON, 404 if not found)
+- `POST /api/items` — Create an item (JSON, 201 on success, 400 on invalid input, 409 on duplicate name)
+- `PUT /api/items/:id` — Update an item (JSON, 200 on success, 400 on invalid input, 404 if not found, 409 on duplicate name)
+
+### Seeding Sample Data
+Populate the database with initial sample inventory items:
+```bash
+npm run seed
+```
+
+---
+
 ## Project Structure
 
 ```text
