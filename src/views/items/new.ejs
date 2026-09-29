@@ -1,0 +1,98 @@
+<%- include('../partials/header', { title: 'Add New Item' }) %>
+
+<div class="page-header">
+  <h1 class="page-title">Add New Item</h1>
+  <a href="/items" class="btn btn-secondary">&larr; Back to Catalogue</a>
+</div>
+
+<% if (typeof errors !== 'undefined' && errors && errors.length > 0) { %>
+  <div class="alert alert-danger">
+    <strong>Please fix the following errors:</strong>
+    <ul>
+      <% errors.forEach(err => { %>
+        <li><%= err %></li>
+      <% }) %>
+    </ul>
+  </div>
+<% } %>
+
+<div class="card">
+  <div class="form-container">
+    <form action="/items" method="POST">
+      <div class="form-group">
+        <label for="name" class="form-label">Item Name *</label>
+        <input 
+          type="text" 
+          id="name" 
+          name="name" 
+          class="form-control" 
+          required 
+          value="<%= typeof item !== 'undefined' && item.name ? item.name : '' %>"
+          placeholder="e.g. Wireless Mouse"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="category" class="form-label">Category *</label>
+        <input 
+          type="text" 
+          id="category" 
+          name="category" 
+          class="form-control" 
+          required 
+          value="<%= typeof item !== 'undefined' && item.category ? item.category : '' %>"
+          placeholder="e.g. Electronics"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="price" class="form-label">Price ($) *</label>
+        <input 
+          type="number" 
+          id="price" 
+          name="price" 
+          class="form-control" 
+          step="0.01" 
+          min="0" 
+          required 
+          value="<%= typeof item !== 'undefined' && item.price !== undefined ? item.price : '0.00' %>"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="quantity" class="form-label">Quantity *</label>
+        <input 
+          type="number" 
+          id="quantity" 
+          name="quantity" 
+          class="form-control" 
+          step="1" 
+          min="0" 
+          required 
+          value="<%= typeof item !== 'undefined' && item.quantity !== undefined ? item.quantity : '0' %>"
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="reorder_threshold" class="form-label">Reorder Threshold *</label>
+        <input 
+          type="number" 
+          id="reorder_threshold" 
+          name="reorder_threshold" 
+          class="form-control" 
+          step="1" 
+          min="0" 
+          required 
+          value="<%= typeof item !== 'undefined' && item.reorder_threshold !== undefined ? item.reorder_threshold : '10' %>"
+        >
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Save Item</button>
+        <a href="/items" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>
