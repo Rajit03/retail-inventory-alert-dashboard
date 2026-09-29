@@ -134,3 +134,16 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# SQLite database files
+*.db
+*.sqlite
+*.sqlite3
+# Selenium / Maven output
+tests/target/
+tests/screenshots/
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
