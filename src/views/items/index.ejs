@@ -17,6 +17,7 @@
             <th>Quantity</th>
             <th>Reorder Threshold</th>
             <th>Stock Status</th>
+            <th>Order Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -35,6 +36,15 @@
                   <span class="badge" style="background-color: #fef3c7; color: #b45309;">LOW STOCK</span>
                 <% } else { %>
                   <span class="badge" style="background-color: #dcfce7; color: #15803d;">IN STOCK</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (item.order_status === 'ORDERED') { %>
+                  <span class="badge" style="background-color: #fef3c7; color: #b45309;">ORDERED (<%= item.expected_date || 'Pending' %>)</span>
+                <% } else if (item.order_status === 'RECEIVED') { %>
+                  <span class="badge" style="background-color: #dcfce7; color: #15803d;">RECEIVED</span>
+                <% } else { %>
+                  <span class="badge" style="background-color: #f1f5f9; color: #64748b;">NONE</span>
                 <% } %>
               </td>
               <td>
