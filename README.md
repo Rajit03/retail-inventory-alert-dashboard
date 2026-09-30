@@ -6,13 +6,11 @@ A lightweight, reliable, containerized web application designed to solve invento
 
 ## MVP Features
 
-1. **Item Catalogue**: Maintain a structured product catalogue with SKU, item name, category, unit price, and baseline stock thresholds.
-- Stock transactions and stock/order status
-- Search, filter and exception alerts
-2. **Create / Update Transaction**: Record stock receipts, sales deductions, and inventory adjustments with instantaneous quantity updates.
-3. **Stock & Order Status**: Real-time visibility into inventory levels, current order statuses, and reorder triggers.
-4. **Search & Filter**: Fast querying and filtering of catalogue items by SKU, name, category, and stock availability status.
-5. **Exception Alerts**: Automatic visual alerts and notifications for low-stock thresholds, critical depletion, and order discrepancies.
+1. **Item Catalogue (US-01)**: Maintain a structured product catalogue with item name, category, unit price, stock quantity, and baseline reorder threshold.
+2. **Stock Transactions (US-02)**: Record inventory movements (`IN` to add stock, `OUT` to remove stock with deficit prevention, and `ADJUST` to set baseline stock) within single ACID database transactions.
+3. **Stock & Order Status (US-03)**: Dynamic, calculated stock health badges (`IN_STOCK`, `LOW_STOCK`, `OUT_OF_STOCK`) and supplier replenishment tracking (`NONE`, `ORDERED`, `RECEIVED`) with expected delivery dates.
+4. **Search & Filter (US-04)**: Real-time SQL-based filtering by partial/case-insensitive name search, category dropdown, and stock health status.
+5. **Exception Alerts (US-05)**: Automated exception alerts dashboard highlighting critical items requiring attention (`OUT_OF_STOCK`, `LOW_STOCK`, and `DELAYED_ORDER`).
 
 ---
 
@@ -48,49 +46,63 @@ A lightweight, reliable, containerized web application designed to solve invento
    npm install
    ```
 
-3. **Start the application**:
+3. **Seed sample data**:
+   ```bash
+   npm run seed
+   ```
+
+4. **Start the application**:
    ```bash
    npm start
    ```
 
-4. **Access the dashboard**:
+5. **Access the dashboard**:
    Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
    You can verify service health at [http://localhost:3000/health](http://localhost:3000/health).
 
-### Environment Variables
+---
 
-The application supports configuration via environment variables:
+## Environment Variables
+
+The application can be configured using the following environment variables:
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `PORT` | Port number on which the server listens | `3000` |
-| `DB_PATH` | File path to the SQLite database file | `data/inventory.db` |
+| `PORT` | Port number on which the HTTP server listens | `3000` |
+| `DB_PATH` | File path to the SQLite database file (supports Docker volume mounting) | `data/inventory.db` |
 
 ---
 
-## Item Catalogue (US-01)
-
-The Item Catalogue feature provides full management for retail inventory items.
+## Application Routes & Endpoints
 
 ### Web Pages
-- `GET /` — Redirects to `/items`
-- `GET /items` — Catalogue table listing all items with name, category, price, quantity, reorder threshold, and edit link
-- `GET /items/new` — Form to create a new item
-- `POST /items` — Submit new item creation
-- `GET /items/:id/edit` — Form to edit an existing item
-- `POST /items/:id` — Submit item update
 
-### API Endpoints
-- `GET /api/items` — Retrieve all items (JSON)
-- `GET /api/items/:id` — Retrieve a specific item by ID (JSON, 404 if not found)
-- `POST /api/items` — Create an item (JSON, 201 on success, 400 on invalid input, 409 on duplicate name)
-- `PUT /api/items/:id` — Update an item (JSON, 200 on success, 400 on invalid input, 404 if not found, 409 on duplicate name)
+| Route | Method | Description |
+| --- | --- | --- |
+| `/` | `GET` | Redirects to `/items` catalogue |
+| `/items` | `GET` | Catalogue table with search, category/status filters, stock badges, and order status |
+| `/items/new` | `GET` | Form to create a new catalogue item |
+| `/items` | `POST` | Process submission for creating a new item |
+| `/items/:id/edit` | `GET` | Form to edit item details and supplier order status |
+| `/items/:id` | `POST` | Process submission for updating an item |
+| `/transactions` | `GET` | Log of all stock transaction movements with item details and timestamps |
+| `/transactions/new` | `GET` | Form to record a new stock transaction (`IN`, `OUT`, `ADJUST`) |
+| `/transactions` | `POST` | Process submission for recording a new transaction |
+| `/alerts` | `GET` | Exception alerts dashboard displaying low stock, out of stock, and delayed orders |
+| `/health` | `GET` | Application health check endpoint returning `{ status: "UP" }` |
 
-### Seeding Sample Data
-Populate the database with initial sample inventory items:
-```bash
-npm run seed
-```
+### REST API Endpoints
+
+| Endpoint | Method | Description | Status Codes |
+| --- | --- | --- | --- |
+| `/api/items` | `GET` | Retrieve list of items (supports `search`, `category`, and `status` query params) | `200`, `500` |
+| `/api/items/:id` | `GET` | Retrieve a single item by ID including calculated `stock_status` | `200`, `404`, `500` |
+| `/api/items` | `POST` | Create a new item (validates fields and duplicate names) | `201`, `400`, `409`, `500` |
+| `/api/items/:id` | `PUT` | Update item details and inventory thresholds | `200`, `400`, `404`, `409`, `500` |
+| `/api/items/:id/order-status` | `PATCH` | Update replenishment order status and expected date | `200`, `400`, `404`, `500` |
+| `/api/transactions` | `GET` | List stock transactions (optionally filter by `itemId` query param) | `200`, `500` |
+| `/api/transactions` | `POST` | Record a stock transaction and atomically update item stock quantity | `201`, `400`, `404`, `500` |
+| `/api/alerts` | `GET` | Retrieve all active computed exception alerts | `200`, `500` |
 
 ---
 
@@ -100,14 +112,33 @@ npm run seed
 retail-inventory-alert-dashboard/
 ├── .github/
 │   └── ISSUE_TEMPLATE/       # GitHub issue templates for bug reports & feature requests
-├── docs/                     # Project documentation and architectural records
-├── public/                   # Static assets (CSS, client JS, images)
+├── data/                     # SQLite database files (runtime, git-ignored)
+├── docs/                     # Project documentation, backlog, and architecture records
+├── public/                   # Static assets
+│   └── css/
+│       └── style.css         # Modern, responsive stylesheet
 ├── src/
-│   ├── db/                   # SQLite database initialization, schemas, and migrations
-│   ├── routes/               # Express route handlers and endpoints
-│   ├── views/                # EJS view templates and UI partials
+│   ├── db/                   # Database schemas, connections, and seeders
+│   │   ├── database.js       # SQLite connection manager with DB_PATH support
+│   │   ├── schema.sql        # Database schema definitions (items, transactions)
+│   │   └── seed.js           # Sample inventory seed script
+│   ├── routes/               # Express route handlers
+│   │   ├── alerts.js         # Exception alerts routes & computation
+│   │   ├── catalogue.js      # Web catalogue pages and form handlers
+│   │   ├── items.js          # REST API for items and order status
+│   │   └── transactions.js   # Stock transactions API and web views
+│   ├── utils/                # Utility helpers
+│   │   └── stockStatus.js    # Calculated stock status helper
+│   ├── validators/           # Request input validators
+│   │   ├── itemValidator.js  # Item input and length constraint validator
+│   │   └── transactionValidator.js # Transaction type and quantity validator
+│   ├── views/                # EJS server-rendered templates
+│   │   ├── alerts/           # Alerts view templates
+│   │   ├── items/            # Catalogue view templates (index, new, edit)
+│   │   ├── partials/         # Reusable UI partials (header, footer)
+│   │   └── transactions/     # Transaction view templates (index, new)
 │   └── server.js             # Express application entry point
-├── tests/                    # Automated unit, integration, and Selenium E2E test suites
+├── tests/                    # Automated test suites
 ├── .gitignore                # Git ignore rules
 ├── CONTRIBUTING.md           # Contribution guidelines, branching model, and commit conventions
 ├── package.json              # Project metadata, scripts, and dependencies
@@ -118,4 +149,4 @@ retail-inventory-alert-dashboard/
 
 ## Branching and Commits
 
-We follow a structured branching model (`main`, `develop`, `feature/*`, `bugfix/*`) and conventional commit standards. For complete branching rules, pull request workflows, and commit message conventions, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+We follow a structured branching model (`main`, `develop`, `feature/*`, `bugfix/*`, `docs/*`, `release/*`) and conventional commit standards. For complete branching rules, pull request workflows, and commit message conventions, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
