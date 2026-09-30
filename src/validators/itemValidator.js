@@ -4,10 +4,14 @@ function validateItem(data = {}) {
 
   if (!name || typeof name !== 'string' || name.trim() === '') {
     errors.push('Name is required and cannot be empty.');
+  } else if (name.trim().length > 100) {
+    errors.push('Name cannot exceed 100 characters.');
   }
 
   if (!category || typeof category !== 'string' || category.trim() === '') {
     errors.push('Category is required and cannot be empty.');
+  } else if (category.trim().length > 50) {
+    errors.push('Category cannot exceed 50 characters.');
   }
 
   if (

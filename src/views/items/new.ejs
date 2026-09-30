@@ -26,6 +26,7 @@
           id="name" 
           name="name" 
           class="form-control" 
+          maxlength="100"
           required 
           value="<%= typeof item !== 'undefined' && item.name ? item.name : '' %>"
           placeholder="e.g. Wireless Mouse"
@@ -39,6 +40,7 @@
           id="category" 
           name="category" 
           class="form-control" 
+          maxlength="50"
           required 
           value="<%= typeof item !== 'undefined' && item.category ? item.category : '' %>"
           placeholder="e.g. Electronics"
