@@ -55,6 +55,15 @@ A lightweight, reliable, containerized web application designed to solve invento
    Open your browser and navigate to [http://localhost:3000](http://localhost:3000).
    You can verify service health at [http://localhost:3000/health](http://localhost:3000/health).
 
+### Environment Variables
+
+The application supports configuration via environment variables:
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `PORT` | Port number on which the server listens | `3000` |
+| `DB_PATH` | File path to the SQLite database file | `data/inventory.db` |
+
 ---
 
 ## Item Catalogue (US-01)
