@@ -7,12 +7,54 @@ const getStockStatus = require('../utils/stockStatus');
 // GET /items - catalogue table
 router.get('/items', (req, res) => {
   try {
-    const items = db.prepare('SELECT * FROM items ORDER BY id ASC').all();
+    const { search, category, status } = req.query;
+    let query = 'SELECT * FROM items';
+    const conditions = [];
+    const params = [];
+
+    if (search && search.trim() !== '') {
+      conditions.push('LOWER(name) LIKE ?');
+      params.push(`%${search.trim().toLowerCase()}%`);
+    }
+
+    if (category && category.trim() !== '') {
+      conditions.push('category = ?');
+      params.push(category.trim());
+    }
+
+    if (status && status.trim() !== '') {
+      const normStatus = status.trim().toUpperCase();
+      if (normStatus === 'OUT_OF_STOCK') {
+        conditions.push('quantity = 0');
+      } else if (normStatus === 'LOW_STOCK') {
+        conditions.push('quantity > 0 AND quantity <= reorder_threshold');
+      } else if (normStatus === 'IN_STOCK') {
+        conditions.push('quantity > reorder_threshold');
+      }
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY id ASC';
+
+    const items = db.prepare(query).all(...params);
+    const categoryRows = db.prepare('SELECT DISTINCT category FROM items ORDER BY category ASC').all();
+    const categories = categoryRows.map(r => r.category);
+
     const itemsWithStatus = items.map(item => ({
       ...item,
       stock_status: getStockStatus(item)
     }));
-    res.render('items/index', { items: itemsWithStatus });
+
+    res.render('items/index', {
+      items: itemsWithStatus,
+      categories,
+      search: search || '',
+      category: category || '',
+      status: status || ''
+    });
   } catch (err) {
     res.status(500).send('Error loading items catalogue');
   }

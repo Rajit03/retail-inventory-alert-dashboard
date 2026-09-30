@@ -54,6 +54,15 @@ const sampleItems = [
     reorder_threshold: 10,
     order_status: 'NONE',
     expected_date: null
+  },
+  {
+    name: 'Organic Orange Juice 64oz',
+    category: 'Beverages',
+    price: 4.50,
+    quantity: 15,
+    reorder_threshold: 5,
+    order_status: 'ORDERED',
+    expected_date: '2026-01-15'
   }
 ];
 
