@@ -1,0 +1,46 @@
+<%- include('../partials/header', { title: 'Catalogue' }) %>
+
+<div class="page-header">
+  <h1 class="page-title">Item Catalogue</h1>
+  <a href="/items/new" class="btn btn-primary">+ Add New Item</a>
+</div>
+
+<% if (items && items.length > 0) { %>
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Reorder Threshold</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(item => { %>
+            <tr>
+              <td><strong><%= item.name %></strong></td>
+              <td><span class="badge"><%= item.category %></span></td>
+              <td>$<%= Number(item.price).toFixed(2) %></td>
+              <td><%= item.quantity %></td>
+              <td><%= item.reorder_threshold %></td>
+              <td>
+                <a href="/items/<%= item.id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } else { %>
+  <div class="card no-items-card">
+    <p>No items yet.</p>
+    <a href="/items/new" class="btn btn-primary">Add your first item</a>
+  </div>
+<% } %>
+
+<%- include('../partials/footer') %>
