@@ -111,13 +111,50 @@ router.put('/:id', (req, res) => {
       req.params.id
     );
 
-    const updatedItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
-    res.status(200).json(updatedItem);
-  } catch (err) {
-    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE' || (err.message && err.message.includes('UNIQUE'))) {
-      return res.status(409).json({ error: 'An item with this name already exists' });
+// PATCH /api/items/:id/order-status - update order status and expected date
+router.patch('/:id/order-status', (req, res) => {
+  try {
+    const existingItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+    if (!existingItem) {
+      return res.status(404).json({ error: 'Item not found' });
     }
-    res.status(500).json({ error: 'Failed to update item' });
+
+    const { order_status, expected_date } = req.body;
+    const validStatuses = ['NONE', 'ORDERED', 'RECEIVED'];
+
+    if (!order_status || !validStatuses.includes(order_status.toUpperCase())) {
+      return res.status(400).json({
+        errors: ["Order status must be one of: 'NONE', 'ORDERED', 'RECEIVED'."]
+      });
+    }
+
+    const normStatus = order_status.toUpperCase();
+    let finalExpectedDate = null;
+
+    if (normStatus === 'ORDERED') {
+      if (!expected_date || typeof expected_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expected_date.trim())) {
+        return res.status(400).json({
+          errors: ['Expected date is required in YYYY-MM-DD format when order status is ORDERED.']
+        });
+      }
+      finalExpectedDate = expected_date.trim();
+    } else if (normStatus === 'RECEIVED' && expected_date) {
+      finalExpectedDate = expected_date.trim();
+    }
+
+    db.prepare(`
+      UPDATE items
+      SET order_status = ?, expected_date = ?
+      WHERE id = ?
+    `).run(normStatus, finalExpectedDate, req.params.id);
+
+    const updatedItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+    return res.status(200).json({
+      ...updatedItem,
+      stock_status: getStockStatus(updatedItem)
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to update order status' });
   }
 });
 
