@@ -1,0 +1,48 @@
+<%- include('../partials/header', { title: 'Transactions' }) %>
+
+<div class="page-header">
+  <h1 class="page-title">Stock Transactions</h1>
+  <a href="/transactions/new" class="btn btn-primary">+ Record Transaction</a>
+</div>
+
+<% if (transactions && transactions.length > 0) { %>
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>Item Name</th>
+            <th>Type</th>
+            <th>Quantity</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% transactions.forEach(tx => { %>
+            <tr>
+              <td><%= tx.created_at %></td>
+              <td><strong><%= tx.item_name %></strong></td>
+              <td>
+                <% if (tx.type === 'IN') { %>
+                  <span class="badge" style="background-color: #dcfce7; color: #15803d;">IN</span>
+                <% } else if (tx.type === 'OUT') { %>
+                  <span class="badge" style="background-color: #fee2e2; color: #b91c1c;">OUT</span>
+                <% } else { %>
+                  <span class="badge" style="background-color: #fef3c7; color: #b45309;">ADJUST</span>
+                <% } %>
+              </td>
+              <td><%= tx.quantity %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } else { %>
+  <div class="card no-items-card">
+    <p>No transactions recorded yet.</p>
+    <a href="/transactions/new" class="btn btn-primary">Record your first transaction</a>
+  </div>
+<% } %>
+
+<%- include('../partials/footer') %>
