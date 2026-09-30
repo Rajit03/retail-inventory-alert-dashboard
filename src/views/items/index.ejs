@@ -16,6 +16,7 @@
             <th>Price</th>
             <th>Quantity</th>
             <th>Reorder Threshold</th>
+            <th>Stock Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -27,6 +28,15 @@
               <td>$<%= Number(item.price).toFixed(2) %></td>
               <td><%= item.quantity %></td>
               <td><%= item.reorder_threshold %></td>
+              <td>
+                <% if (item.stock_status === 'OUT_OF_STOCK') { %>
+                  <span class="badge" style="background-color: #fee2e2; color: #b91c1c;">OUT OF STOCK</span>
+                <% } else if (item.stock_status === 'LOW_STOCK') { %>
+                  <span class="badge" style="background-color: #fef3c7; color: #b45309;">LOW STOCK</span>
+                <% } else { %>
+                  <span class="badge" style="background-color: #dcfce7; color: #15803d;">IN STOCK</span>
+                <% } %>
+              </td>
               <td>
                 <a href="/items/<%= item.id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
               </td>

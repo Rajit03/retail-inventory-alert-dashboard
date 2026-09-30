@@ -2,12 +2,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const validateItem = require('../validators/itemValidator');
+const getStockStatus = require('../utils/stockStatus');
 
 // GET /items - catalogue table
 router.get('/items', (req, res) => {
   try {
     const items = db.prepare('SELECT * FROM items ORDER BY id ASC').all();
-    res.render('items/index', { items });
+    const itemsWithStatus = items.map(item => ({
+      ...item,
+      stock_status: getStockStatus(item)
+    }));
+    res.render('items/index', { items: itemsWithStatus });
   } catch (err) {
     res.status(500).send('Error loading items catalogue');
   }
