@@ -7,6 +7,7 @@ A lightweight, reliable, containerized web application designed to solve invento
 ## MVP Features
 
 1. **Item Catalogue**: Maintain a structured product catalogue with SKU, item name, category, unit price, and baseline stock thresholds.
+- Stock transactions and stock/order status
 2. **Create / Update Transaction**: Record stock receipts, sales deductions, and inventory adjustments with instantaneous quantity updates.
 3. **Stock & Order Status**: Real-time visibility into inventory levels, current order statuses, and reorder triggers.
 4. **Search & Filter**: Fast querying and filtering of catalogue items by SKU, name, category, and stock availability status.
