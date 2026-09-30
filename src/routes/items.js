@@ -3,10 +3,42 @@ const router = express.Router();
 const db = require('../db/database');
 const validateItem = require('../validators/itemValidator');
 
-// GET /api/items - list all items
+// GET /api/items - list all items with optional search and filtering
 router.get('/', (req, res) => {
   try {
-    const items = db.prepare('SELECT * FROM items ORDER BY id ASC').all();
+    const { search, category, status } = req.query;
+    let query = 'SELECT * FROM items';
+    const conditions = [];
+    const params = [];
+
+    if (search && search.trim() !== '') {
+      conditions.push('LOWER(name) LIKE ?');
+      params.push(`%${search.trim().toLowerCase()}%`);
+    }
+
+    if (category && category.trim() !== '') {
+      conditions.push('category = ?');
+      params.push(category.trim());
+    }
+
+    if (status && status.trim() !== '') {
+      const normStatus = status.trim().toUpperCase();
+      if (normStatus === 'OUT_OF_STOCK') {
+        conditions.push('quantity = 0');
+      } else if (normStatus === 'LOW_STOCK') {
+        conditions.push('quantity > 0 AND quantity <= reorder_threshold');
+      } else if (normStatus === 'IN_STOCK') {
+        conditions.push('quantity > reorder_threshold');
+      }
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    query += ' ORDER BY id ASC';
+
+    const items = db.prepare(query).all(...params);
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve items' });
