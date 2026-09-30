@@ -87,6 +87,27 @@
         >
       </div>
 
+      <div class="form-group">
+        <label for="order_status" class="form-label">Order Status</label>
+        <select id="order_status" name="order_status" class="form-control">
+          <option value="NONE" <%= (item.order_status === 'NONE' || !item.order_status) ? 'selected' : '' %>>NONE</option>
+          <option value="ORDERED" <%= item.order_status === 'ORDERED' ? 'selected' : '' %>>ORDERED</option>
+          <option value="RECEIVED" <%= item.order_status === 'RECEIVED' ? 'selected' : '' %>>RECEIVED</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="expected_date" class="form-label">Expected Date (Required if ORDERED, YYYY-MM-DD)</label>
+        <input 
+          type="date" 
+          id="expected_date" 
+          name="expected_date" 
+          class="form-control" 
+          value="<%= item.expected_date ? item.expected_date : '' %>"
+          placeholder="YYYY-MM-DD"
+        >
+      </div>
+
       <div class="form-actions">
         <button type="submit" class="btn btn-primary">Update Item</button>
         <a href="/items" class="btn btn-secondary">Cancel</a>

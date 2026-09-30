@@ -2,12 +2,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const validateItem = require('../validators/itemValidator');
+const getStockStatus = require('../utils/stockStatus');
 
 // GET /api/items - list all items
 router.get('/', (req, res) => {
   try {
     const items = db.prepare('SELECT * FROM items ORDER BY id ASC').all();
-    res.json(items);
+    const itemsWithStatus = items.map(item => ({
+      ...item,
+      stock_status: getStockStatus(item)
+    }));
+    res.json(itemsWithStatus);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve items' });
   }
@@ -20,7 +25,10 @@ router.get('/:id', (req, res) => {
     if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
-    res.json(item);
+    res.json({
+      ...item,
+      stock_status: getStockStatus(item)
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve item' });
   }
@@ -104,12 +112,62 @@ router.put('/:id', (req, res) => {
     );
 
     const updatedItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
-    res.status(200).json(updatedItem);
+    return res.status(200).json({
+      ...updatedItem,
+      stock_status: getStockStatus(updatedItem)
+    });
   } catch (err) {
     if (err.code === 'SQLITE_CONSTRAINT_UNIQUE' || (err.message && err.message.includes('UNIQUE'))) {
       return res.status(409).json({ error: 'An item with this name already exists' });
     }
-    res.status(500).json({ error: 'Failed to update item' });
+    return res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
+// PATCH /api/items/:id/order-status - update order status and expected date
+router.patch('/:id/order-status', (req, res) => {
+  try {
+    const existingItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+    if (!existingItem) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    const { order_status, expected_date } = req.body;
+    const validStatuses = ['NONE', 'ORDERED', 'RECEIVED'];
+
+    if (!order_status || !validStatuses.includes(order_status.toUpperCase())) {
+      return res.status(400).json({
+        errors: ["Order status must be one of: 'NONE', 'ORDERED', 'RECEIVED'."]
+      });
+    }
+
+    const normStatus = order_status.toUpperCase();
+    let finalExpectedDate = null;
+
+    if (normStatus === 'ORDERED') {
+      if (!expected_date || typeof expected_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expected_date.trim())) {
+        return res.status(400).json({
+          errors: ['Expected date is required in YYYY-MM-DD format when order status is ORDERED.']
+        });
+      }
+      finalExpectedDate = expected_date.trim();
+    } else if (normStatus === 'RECEIVED' && expected_date) {
+      finalExpectedDate = expected_date.trim();
+    }
+
+    db.prepare(`
+      UPDATE items
+      SET order_status = ?, expected_date = ?
+      WHERE id = ?
+    `).run(normStatus, finalExpectedDate, req.params.id);
+
+    const updatedItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+    return res.status(200).json({
+      ...updatedItem,
+      stock_status: getStockStatus(updatedItem)
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to update order status' });
   }
 });
 

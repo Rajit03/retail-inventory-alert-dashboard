@@ -2,12 +2,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const validateItem = require('../validators/itemValidator');
+const getStockStatus = require('../utils/stockStatus');
 
 // GET /items - catalogue table
 router.get('/items', (req, res) => {
   try {
     const items = db.prepare('SELECT * FROM items ORDER BY id ASC').all();
-    res.render('items/index', { items });
+    const itemsWithStatus = items.map(item => ({
+      ...item,
+      stock_status: getStockStatus(item)
+    }));
+    res.render('items/index', { items: itemsWithStatus });
   } catch (err) {
     res.status(500).send('Error loading items catalogue');
   }
@@ -81,8 +86,23 @@ router.get('/items/:id/edit', (req, res) => {
 // POST /items/:id - update item
 router.post('/items/:id', (req, res) => {
   const errors = validateItem(req.body);
-  const { name, category, price, quantity, reorder_threshold } = req.body;
-  const itemData = { id: req.params.id, name, category, price, quantity, reorder_threshold };
+  const { name, category, price, quantity, reorder_threshold, order_status, expected_date } = req.body;
+  const itemData = {
+    id: req.params.id,
+    name,
+    category,
+    price,
+    quantity,
+    reorder_threshold,
+    order_status: order_status || 'NONE',
+    expected_date: expected_date || ''
+  };
+
+  if (order_status === 'ORDERED') {
+    if (!expected_date || typeof expected_date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(expected_date.trim())) {
+      errors.push('Expected date is required in YYYY-MM-DD format when order status is ORDERED.');
+    }
+  }
 
   if (errors.length > 0) {
     return res.status(400).render('items/edit', { errors, item: itemData });
@@ -102,9 +122,17 @@ router.post('/items/:id', (req, res) => {
       });
     }
 
+    let finalExpectedDate = null;
+    const normStatus = order_status ? order_status.toUpperCase() : 'NONE';
+    if (normStatus === 'ORDERED' && expected_date) {
+      finalExpectedDate = expected_date.trim();
+    } else if (normStatus === 'RECEIVED' && expected_date) {
+      finalExpectedDate = expected_date.trim();
+    }
+
     const update = db.prepare(`
       UPDATE items
-      SET name = ?, category = ?, price = ?, quantity = ?, reorder_threshold = ?
+      SET name = ?, category = ?, price = ?, quantity = ?, reorder_threshold = ?, order_status = ?, expected_date = ?
       WHERE id = ?
     `);
 
@@ -114,6 +142,8 @@ router.post('/items/:id', (req, res) => {
       Number(price),
       Number(quantity),
       Number(reorder_threshold),
+      normStatus,
+      finalExpectedDate,
       req.params.id
     );
 
