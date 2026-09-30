@@ -5,6 +5,49 @@
   <a href="/items/new" class="btn btn-primary">+ Add New Item</a>
 </div>
 
+<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+  <form action="/items" method="GET" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+    <div style="flex: 2; min-width: 200px;">
+      <label for="search" class="form-label">Search Item</label>
+      <input 
+        type="text" 
+        id="search" 
+        name="search" 
+        class="form-control" 
+        placeholder="Search by item name..." 
+        value="<%= typeof search !== 'undefined' ? search : '' %>"
+      >
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label for="category" class="form-label">Category</label>
+      <select id="category" name="category" class="form-control">
+        <option value="">All Categories</option>
+        <% if (typeof categories !== 'undefined') { %>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat %>" <%= (typeof category !== 'undefined' && category === cat) ? 'selected' : '' %>><%= cat %></option>
+          <% }) %>
+        <% } %>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label for="status" class="form-label">Stock Status</label>
+      <select id="status" name="status" class="form-control">
+        <option value="">All Statuses</option>
+        <option value="IN_STOCK" <%= (typeof status !== 'undefined' && status === 'IN_STOCK') ? 'selected' : '' %>>In Stock</option>
+        <option value="LOW_STOCK" <%= (typeof status !== 'undefined' && status === 'LOW_STOCK') ? 'selected' : '' %>>Low Stock</option>
+        <option value="OUT_OF_STOCK" <%= (typeof status !== 'undefined' && status === 'OUT_OF_STOCK') ? 'selected' : '' %>>Out of Stock</option>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-primary">Filter</button>
+      <a href="/items" class="btn btn-secondary">Reset</a>
+    </div>
+  </form>
+</div>
+
 <% if (items && items.length > 0) { %>
   <div class="card">
     <div class="table-responsive">
@@ -58,8 +101,12 @@
   </div>
 <% } else { %>
   <div class="card no-items-card">
-    <p>No items yet.</p>
-    <a href="/items/new" class="btn btn-primary">Add your first item</a>
+    <p>No items found.</p>
+    <% if ((typeof search !== 'undefined' && search) || (typeof category !== 'undefined' && category) || (typeof status !== 'undefined' && status)) { %>
+      <a href="/items" class="btn btn-secondary">Clear filters</a>
+    <% } else { %>
+      <a href="/items/new" class="btn btn-primary">Add your first item</a>
+    <% } %>
   </div>
 <% } %>
 
