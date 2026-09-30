@@ -111,6 +111,19 @@ router.put('/:id', (req, res) => {
       req.params.id
     );
 
+    const updatedItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+    return res.status(200).json({
+      ...updatedItem,
+      stock_status: getStockStatus(updatedItem)
+    });
+  } catch (err) {
+    if (err.code === 'SQLITE_CONSTRAINT_UNIQUE' || (err.message && err.message.includes('UNIQUE'))) {
+      return res.status(409).json({ error: 'An item with this name already exists' });
+    }
+    return res.status(500).json({ error: 'Failed to update item' });
+  }
+});
+
 // PATCH /api/items/:id/order-status - update order status and expected date
 router.patch('/:id/order-status', (req, res) => {
   try {
