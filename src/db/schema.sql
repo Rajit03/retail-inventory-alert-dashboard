@@ -8,3 +8,11 @@ CREATE TABLE IF NOT EXISTS items (
     order_status TEXT NOT NULL DEFAULT 'NONE',
     expected_date TEXT
 );
+
+CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id INTEGER NOT NULL REFERENCES items(id),
+    type TEXT NOT NULL CHECK(type IN ('IN','OUT','ADJUST')),
+    quantity INTEGER NOT NULL CHECK(quantity >= 0),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
