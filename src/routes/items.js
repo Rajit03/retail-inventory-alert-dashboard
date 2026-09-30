@@ -2,12 +2,17 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const validateItem = require('../validators/itemValidator');
+const getStockStatus = require('../utils/stockStatus');
 
 // GET /api/items - list all items
 router.get('/', (req, res) => {
   try {
     const items = db.prepare('SELECT * FROM items ORDER BY id ASC').all();
-    res.json(items);
+    const itemsWithStatus = items.map(item => ({
+      ...item,
+      stock_status: getStockStatus(item)
+    }));
+    res.json(itemsWithStatus);
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve items' });
   }
@@ -20,7 +25,10 @@ router.get('/:id', (req, res) => {
     if (!item) {
       return res.status(404).json({ error: 'Item not found' });
     }
-    res.json(item);
+    res.json({
+      ...item,
+      stock_status: getStockStatus(item)
+    });
   } catch (err) {
     res.status(500).json({ error: 'Failed to retrieve item' });
   }
