@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node src/server.js",
     "seed": "node src/db/seed.js",
+    "build": "node scripts/build.js",
     "test": "node --test tests/unit/"
   },
   "repository": {
