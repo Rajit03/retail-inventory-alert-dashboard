@@ -116,6 +116,12 @@ retail-inventory-alert-dashboard/
 
 ---
 
+## Continuous Integration
+
+The repository includes automated build, syntax verification, testing, and packaging scripts (`npm run build`, `npm test`, `npm run package`, `npm run ci`) designed for CI pipelines. For detailed instructions on the CI lifecycle and Jenkins freestyle job setup, please see the [CI Setup Guide](docs/ci-setup.md).
+
+---
+
 ## Branching and Commits
 
 We follow a structured branching model (`main`, `develop`, `feature/*`, `bugfix/*`) and conventional commit standards. For complete branching rules, pull request workflows, and commit message conventions, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
