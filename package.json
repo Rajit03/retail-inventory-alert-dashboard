@@ -16,7 +16,8 @@
     "seed": "node src/db/seed.js",
     "build": "node scripts/build.js",
     "test": "node --test tests/unit/",
-    "package": "npm pack"
+    "package": "npm pack",
+    "ci": "npm ci && npm run build && npm test && npm pack"
   },
   "repository": {
     "type": "git",
