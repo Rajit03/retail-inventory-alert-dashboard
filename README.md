@@ -122,6 +122,14 @@ The repository includes automated build, syntax verification, testing, and packa
 
 ---
 
+## Pipeline and Deployment
+
+The repository includes a declarative Jenkins pipeline (`Jenkinsfile`) supporting automated Checkout, Build, Packaging, and Deployment to `dev` (port 3001, Nginx port 8081) and `staging` (port 3002, Nginx port 8082) environments with atomic release junctions, shared database persistence, and automated health checks.
+
+For complete documentation on pipeline stages, parameters, directory layout, and Nginx reverse proxy configuration, refer to the [Pipeline & Deployment Guide](docs/pipeline-setup.md).
+
+---
+
 ## Branching and Commits
 
 We follow a structured branching model (`main`, `develop`, `feature/*`, `bugfix/*`) and conventional commit standards. For complete branching rules, pull request workflows, and commit message conventions, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
