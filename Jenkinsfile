@@ -12,14 +12,25 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'DEPLOY_ENV', choices: ['dev', 'staging'], description: 'Target deployment environment')
-        string(name: 'DEPLOY_ROOT', defaultValue: 'C:\\deploy\\retail-inventory', description: 'Deployment root directory')
+        choice(
+            name: 'DEPLOY_ENV',
+            choices: ['dev', 'staging'],
+            description: 'Target deployment environment'
+        )
+
+        string(
+            name: 'DEPLOY_ROOT',
+            defaultValue: 'C:\\deploy\\retail-inventory',
+            description: 'Deployment root directory'
+        )
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
+
                 bat '''
                     @echo off
                     echo ==========================================
@@ -51,24 +62,76 @@ pipeline {
                     if exist *.tgz del /f /q *.tgz
                     call npm pack
                 '''
-                archiveArtifacts artifacts: '*.tgz, build-info.json', fingerprint: true
+
+                archiveArtifacts artifacts: '*.tgz, build-info.json',
+                                 fingerprint: true
             }
         }
 
         stage('Deploy') {
             steps {
                 script {
+
+                    // Application ports
                     def appPort = (params.DEPLOY_ENV == 'staging') ? '3002' : '3001'
-                    def nginxPort = (params.DEPLOY_ENV == 'staging') ? '8082' : '8081'
 
-                    // Find the generated package tarball
-                    def pkgFile = bat(script: '@powershell -NoProfile -Command "(Get-Item *.tgz | Select-Object -First 1).Name"', returnStdout: true).trim()
+                    // Nginx ports
+                    def nginxPort = (params.DEPLOY_ENV == 'staging') ? '8096' : '8095'
 
-                    withEnv(['JENKINS_NODE_COOKIE=dontKillMe', 'BUILD_ID=dontKillMe']) {
-                        bat "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\deploy.ps1 -Environment ${params.DEPLOY_ENV} -Port ${appPort} -DeployRoot \"${params.DEPLOY_ROOT}\" -PackagePath \"${pkgFile}\" -BuildNumber ${BUILD_NUMBER}"
+                    echo "=========================================="
+                    echo "Deployment Configuration"
+                    echo "Environment : ${params.DEPLOY_ENV}"
+                    echo "Application : ${appPort}"
+                    echo "Nginx       : ${nginxPort}"
+                    echo "=========================================="
+
+                    // Find generated package tarball
+                    def pkgFile = bat(
+                        script: '@powershell -NoProfile -Command "(Get-Item *.tgz | Select-Object -First 1).Name"',
+                        returnStdout: true
+                    ).trim()
+
+                    echo "Package: ${pkgFile}"
+
+                    // Prevent Jenkins from killing the deployed Node process
+                    withEnv([
+                        'JENKINS_NODE_COOKIE=dontKillMe',
+                        'BUILD_ID=dontKillMe'
+                    ]) {
+
+                        bat """
+                            powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\deploy.ps1 ^
+                            -Environment ${params.DEPLOY_ENV} ^
+                            -Port ${appPort} ^
+                            -DeployRoot "${params.DEPLOY_ROOT}" ^
+                            -PackagePath "${pkgFile}" ^
+                            -BuildNumber ${BUILD_NUMBER}
+                        """
                     }
 
-                    bat "powershell -NoProfile -Command \"try { (Invoke-WebRequest -UseBasicParsing http://localhost:${nginxPort}/health).Content } catch { Write-Output 'Nginx not reachable on ${nginxPort} (start Nginx)'; exit 0 }\""
+                    echo "Checking application directly..."
+
+                    bat """
+                        powershell -NoProfile -Command ^
+                        "try { ^
+                            (Invoke-WebRequest -UseBasicParsing http://localhost:${appPort}/health).Content ^
+                        } catch { ^
+                            Write-Output 'Application health check failed on port ${appPort}'; ^
+                            exit 1 ^
+                        }"
+                    """
+
+                    echo "Checking Nginx..."
+
+                    bat """
+                        powershell -NoProfile -Command ^
+                        "try { ^
+                            (Invoke-WebRequest -UseBasicParsing http://localhost:${nginxPort}/health).Content ^
+                        } catch { ^
+                            Write-Output 'Nginx not reachable on port ${nginxPort}. Make sure Nginx is running.'; ^
+                            exit 1 ^
+                        }"
+                    """
 
                     echo "Application URL: http://localhost:${nginxPort}/items"
                 }
@@ -77,17 +140,31 @@ pipeline {
     }
 
     post {
+
         success {
             script {
-                def nginxPort = (params.DEPLOY_ENV == 'staging') ? '8082' : '8081'
-                echo "Deployment successful! Environment: ${params.DEPLOY_ENV}, Build: #${BUILD_NUMBER}, URL: http://localhost:${nginxPort}/items"
+
+                def nginxPort =
+                    (params.DEPLOY_ENV == 'staging') ? '8096' : '8095'
+
+                echo "=========================================="
+                echo "Deployment successful!"
+                echo "Environment : ${params.DEPLOY_ENV}"
+                echo "Build       : #${BUILD_NUMBER}"
+                echo "Application : http://localhost:${nginxPort}/items"
+                echo "=========================================="
             }
         }
+
         failure {
             echo "Pipeline failed"
         }
+
         always {
-            archiveArtifacts allowEmptyArchive: true, artifacts: 'build-info.json'
+            archiveArtifacts(
+                allowEmptyArchive: true,
+                artifacts: 'build-info.json'
+            )
         }
     }
 }
