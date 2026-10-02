@@ -52,13 +52,18 @@ $stderrLog = Join-Path $logsDir 'err.log'
 
 # 2. Create required directory structure
 Write-Host "[1/7] Creating directory structure..."
-$dirsToCreate = @($releasesDir, $releaseDir, $sharedDataDir, $logsDir)
+$dirsToCreate = @($releasesDir, $sharedDataDir, $logsDir)
 foreach ($dir in $dirsToCreate) {
     if (-not (Test-Path -Path $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
         Write-Host "  Created: $dir"
     }
 }
+if (Test-Path -Path $releaseDir) {
+    Remove-Item -Path $releaseDir -Recurse -Force
+}
+New-Item -ItemType Directory -Path $releaseDir -Force | Out-Null
+Write-Host "  Created: $releaseDir"
 
 # 3. Extract package archive
 Write-Host "[2/7] Extracting package into $releaseDir..."
@@ -66,14 +71,33 @@ tar -xzf "$resolvedPackagePath" -C "$releaseDir"
 $pkgSubdir = Join-Path $releaseDir 'package'
 if (Test-Path -Path $pkgSubdir) {
     Get-ChildItem -Path $pkgSubdir -Force | ForEach-Object {
+        $dest = Join-Path $releaseDir $_.Name
+        if (Test-Path -Path $dest) {
+            Remove-Item -Path $dest -Recurse -Force -ErrorAction SilentlyContinue
+        }
         Move-Item -Path $_.FullName -Destination $releaseDir -Force
     }
-    Remove-Item -Path $pkgSubdir -Recurse -Force
+    Remove-Item -Path $pkgSubdir -Recurse -Force -ErrorAction SilentlyContinue
 }
 Write-Host "  Extracted files to release folder."
 
 # 4. Install production dependencies
 Write-Host "[3/7] Installing production dependencies in release folder..."
+$targetLock = Join-Path $releaseDir 'package-lock.json'
+if (-not (Test-Path -Path $targetLock)) {
+    $candidates = @(
+        (Join-Path (Split-Path -Parent $resolvedPackagePath) 'package-lock.json'),
+        (Join-Path $PSScriptRoot '..\package-lock.json'),
+        (Join-Path (Get-Location) 'package-lock.json')
+    )
+    foreach ($c in $candidates) {
+        if ($c -and (Test-Path -Path $c)) {
+            Copy-Item -Path $c -Destination $targetLock -Force
+            Write-Host "  Found and copied package-lock.json to release directory."
+            break
+        }
+    }
+}
 Push-Location $releaseDir
 try {
     cmd /c "npm ci --omit=dev"
@@ -92,15 +116,10 @@ if (Test-Path -Path $pidFile) {
         $oldPidContent = (Get-Content -Path $pidFile -Raw).Trim()
         if ($oldPidContent -match '^\d+$') {
             $oldPid = [int]$oldPidContent
-            $oldProcess = Get-Process -Id $oldPid -ErrorAction SilentlyContinue
-            if ($oldProcess) {
-                Write-Host "  Stopping process with PID: $oldPid..."
-                Stop-Process -Id $oldPid -Force -ErrorAction SilentlyContinue
-                Start-Sleep -Seconds 2
-                Write-Host "  Process $oldPid stopped."
-            } else {
-                Write-Host "  Process with PID $oldPid is not running."
-            }
+            Write-Host "  Stopping previous process tree (PID: $oldPid)..."
+            cmd /c "taskkill /F /PID $oldPid /T 2>nul" | Out-Null
+            Start-Sleep -Seconds 1
+            Write-Host "  Previous process stopped."
         }
     } catch {
         Write-Host "  Note: Could not stop existing process: $_"
@@ -147,18 +166,19 @@ $env:PORT = "$Port"
 $env:NODE_ENV = "production"
 $env:DB_PATH = "$dbFile"
 
-# Clear previous error log or create empty
-if (-not (Test-Path -Path $logsDir)) {
-    New-Item -ItemType Directory -Path $logsDir -Force | Out-Null
-}
+# Launch detached process with file redirection
+$cmdArgs = "/c node src\server.js 1>> `"$stdoutLog`" 2>> `"$stderrLog`""
+$psi = New-Object System.Diagnostics.ProcessStartInfo
+$psi.FileName = "cmd.exe"
+$psi.Arguments = $cmdArgs
+$psi.WorkingDirectory = $currentDir
+$psi.UseShellExecute = $false
+$psi.CreateNoWindow = $true
+$psi.EnvironmentVariables["PORT"] = "$Port"
+$psi.EnvironmentVariables["NODE_ENV"] = "production"
+$psi.EnvironmentVariables["DB_PATH"] = "$dbFile"
 
-$proc = Start-Process -FilePath "node" `
-    -ArgumentList "src/server.js" `
-    -WorkingDirectory $currentDir `
-    -RedirectStandardOutput $stdoutLog `
-    -RedirectStandardError $stderrLog `
-    -PassThru
-
+$proc = [System.Diagnostics.Process]::Start($psi)
 Set-Content -Path $pidFile -Value $proc.Id
 Write-Host "  Application started with PID: $($proc.Id)"
 Write-Host "  Logs: $stdoutLog | $stderrLog"
