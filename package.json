@@ -1,12 +1,23 @@
 {
   "name": "retail-inventory-alert-dashboard",
   "version": "1.0.0",
+  "private": true,
   "description": "Containerized retail inventory dashboard with stock alerts",
   "main": "src/server.js",
+  "files": [
+    "src",
+    "public",
+    "build-info.json",
+    "README.md",
+    "package-lock.json"
+  ],
   "scripts": {
     "start": "node src/server.js",
     "seed": "node src/db/seed.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node scripts/build.js",
+    "test": "node --test tests/unit/",
+    "package": "npm pack",
+    "ci": "npm ci && npm run build && npm test && npm pack"
   },
   "repository": {
     "type": "git",
