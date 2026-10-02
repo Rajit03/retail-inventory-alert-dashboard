@@ -45,16 +45,43 @@ pipeline {
         }
 
         stage('Build') {
-            steps {
-                bat '''
-                    call node -v
-                    call npm -v
-                    call npm ci
-                    call npm run build
-                    call npm test
-                '''
-            }
-        }
+    steps {
+        bat '''
+            call node -v
+            call npm -v
+
+            echo ==========================================
+            echo Installing dependencies
+            echo ==========================================
+            call npm ci
+
+            echo ==========================================
+            echo Checking Express installation
+            echo ==========================================
+            call npm ls express
+
+            echo ==========================================
+            echo Checking node_modules
+            echo ==========================================
+            if exist node_modules\\express (
+                echo Express module exists
+            ) else (
+                echo ERROR: Express module NOT FOUND
+                exit /b 1
+            )
+
+            echo ==========================================
+            echo Build
+            echo ==========================================
+            call npm run build
+
+            echo ==========================================
+            echo Tests
+            echo ==========================================
+            call npm test
+        '''
+    }
+}
 
         stage('Package') {
             steps {
