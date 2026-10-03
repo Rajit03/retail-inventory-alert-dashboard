@@ -45,50 +45,54 @@ pipeline {
         }
 
         stage('Build') {
-    steps {
-        bat '''
-            call C:/nvm4w/nodejs/node.exe -v
-            call C:/nvm4w/nodejs/npm.cmd -v
+            steps {
+                withEnv(['PATH+NODE=C:/nvm4w/nodejs']) {
+                    bat '''
+                        call node -v
+                        call npm -v
 
-            echo ==========================================
-            echo Installing dependencies
-            echo ==========================================
-            call C:/nvm4w/nodejs/npm.cmd ci --prefer-binary
+                        echo ==========================================
+                        echo Installing dependencies
+                        echo ==========================================
+                        call npm ci --prefer-binary
 
-            echo ==========================================
-            echo Checking Express installation
-            echo ==========================================
-            call npm ls express
+                        echo ==========================================
+                        echo Checking Express installation
+                        echo ==========================================
+                        call npm ls express
 
-            echo ==========================================
-            echo Checking node_modules
-            echo ==========================================
-            if exist node_modules\\express (
-                echo Express module exists
-            ) else (
-                echo ERROR: Express module NOT FOUND
-                exit /b 1
-            )
+                        echo ==========================================
+                        echo Checking node_modules
+                        echo ==========================================
+                        if exist node_modules\\express (
+                            echo Express module exists
+                        ) else (
+                            echo ERROR: Express module NOT FOUND
+                            exit /b 1
+                        )
 
-            echo ==========================================
-            echo Build
-            echo ==========================================
-            call C:/nvm4w/nodejs/npm.cmd run build
+                        echo ==========================================
+                        echo Build
+                        echo ==========================================
+                        call npm run build
 
-            echo ==========================================
-            echo Tests
-            echo ==========================================
-            call C:/nvm4w/nodejs/npm.cmd test
-        '''
-    }
-}
+                        echo ==========================================
+                        echo Tests
+                        echo ==========================================
+                        call npm test
+                    '''
+                }
+            }
+        }
 
         stage('Package') {
             steps {
-                bat '''
-                    if exist *.tgz del /f /q *.tgz
-                    call npm pack
-                '''
+                withEnv(['PATH+NODE=C:/nvm4w/nodejs']) {
+                    bat '''
+                        if exist *.tgz del /f /q *.tgz
+                        call npm pack
+                    '''
+                }
 
                 archiveArtifacts artifacts: '*.tgz, build-info.json',
                                  fingerprint: true
@@ -123,7 +127,8 @@ pipeline {
                     // Prevent Jenkins from killing the deployed Node process
                     withEnv([
                         'JENKINS_NODE_COOKIE=dontKillMe',
-                        'BUILD_ID=dontKillMe'
+                        'BUILD_ID=dontKillMe',
+                        'PATH+NODE=C:/nvm4w/nodejs'
                     ]) {
 
                         bat """
