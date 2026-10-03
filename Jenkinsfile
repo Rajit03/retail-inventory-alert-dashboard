@@ -149,27 +149,11 @@ pipeline {
 
                     echo "Checking application directly..."
 
-                    bat """
-                        powershell -NoProfile -Command ^
-                        "try { ^
-                            (Invoke-WebRequest -UseBasicParsing http://localhost:${appPort}/health).Content ^
-                        } catch { ^
-                            Write-Output 'Application health check failed on port ${appPort}'; ^
-                            exit 1 ^
-                        }"
-                    """
+                    bat "powershell -NoProfile -Command \"try { (Invoke-WebRequest -UseBasicParsing http://localhost:${appPort}/health).Content } catch { Write-Output 'Application health check failed on port ${appPort}'; exit 1 }\""
 
                     echo "Checking Nginx..."
 
-                    bat """
-                        powershell -NoProfile -Command ^
-                        "try { ^
-                            (Invoke-WebRequest -UseBasicParsing http://localhost:${nginxPort}/health).Content ^
-                        } catch { ^
-                            Write-Output 'Nginx not reachable on port ${nginxPort}. Make sure Nginx is running.'; ^
-                            exit 1 ^
-                        }"
-                    """
+                    bat "powershell -NoProfile -Command \"try { (Invoke-WebRequest -UseBasicParsing http://localhost:${nginxPort}/health).Content } catch { Write-Output 'Nginx not reachable on port ${nginxPort}. Make sure Nginx is running.'; exit 1 }\""
 
                     echo "Application URL: http://localhost:${nginxPort}/items"
                 }
