@@ -45,49 +45,63 @@ pipeline {
         }
 
         stage('Build') {
-    steps {
-        bat '''
-            call node -v
-            call npm -v
+            steps {
+                bat '''
+                    @echo off
 
-            echo ==========================================
-            echo Installing dependencies
-            echo ==========================================
-            call npm ci
+                    echo ==========================================
+                    echo Node and npm versions
+                    echo ==========================================
+                    call node -v
+                    call npm -v
 
-            echo ==========================================
-            echo Checking Express installation
-            echo ==========================================
-            call npm ls express
+                    echo ==========================================
+                    echo Cleaning dependencies
+                    echo ==========================================
+                    if exist node_modules (
+                        rmdir /s /q node_modules
+                    )
 
-            echo ==========================================
-            echo Checking node_modules
-            echo ==========================================
-            if exist node_modules\\express (
-                echo Express module exists
-            ) else (
-                echo ERROR: Express module NOT FOUND
-                exit /b 1
-            )
+                    echo ==========================================
+                    echo Installing dependencies
+                    echo ==========================================
+                    call npm ci --prefer-binary
+                    if errorlevel 1 exit /b 1
 
-            echo ==========================================
-            echo Build
-            echo ==========================================
-            call npm run build
+                    echo ==========================================
+                    echo Checking better-sqlite3
+                    echo ==========================================
+                    call npm ls better-sqlite3
+                    if errorlevel 1 exit /b 1
 
-            echo ==========================================
-            echo Tests
-            echo ==========================================
-            call npm test
-        '''
-    }
-}
+                    echo ==========================================
+                    echo Checking Express
+                    echo ==========================================
+                    call npm ls express
+                    if errorlevel 1 exit /b 1
+
+                    echo ==========================================
+                    echo Build
+                    echo ==========================================
+                    call npm run build
+                    if errorlevel 1 exit /b 1
+
+                    echo ==========================================
+                    echo Tests
+                    echo ==========================================
+                    call npm test
+                    if errorlevel 1 exit /b 1
+                '''
+            }
+        }
 
         stage('Package') {
             steps {
                 bat '''
+                    @echo off
                     if exist *.tgz del /f /q *.tgz
                     call npm pack
+                    if errorlevel 1 exit /b 1
                 '''
 
                 archiveArtifacts artifacts: '*.tgz, build-info.json',
@@ -99,10 +113,7 @@ pipeline {
             steps {
                 script {
 
-                    // Application ports
                     def appPort = (params.DEPLOY_ENV == 'staging') ? '3002' : '3001'
-
-                    // Nginx ports
                     def nginxPort = (params.DEPLOY_ENV == 'staging') ? '8096' : '8095'
 
                     echo "=========================================="
@@ -112,7 +123,6 @@ pipeline {
                     echo "Nginx       : ${nginxPort}"
                     echo "=========================================="
 
-                    // Find generated package tarball
                     def pkgFile = bat(
                         script: '@powershell -NoProfile -Command "(Get-Item *.tgz | Select-Object -First 1).Name"',
                         returnStdout: true
@@ -120,7 +130,6 @@ pipeline {
 
                     echo "Package: ${pkgFile}"
 
-                    // Prevent Jenkins from killing the deployed Node process
                     withEnv([
                         'JENKINS_NODE_COOKIE=dontKillMe',
                         'BUILD_ID=dontKillMe'
