@@ -1,6 +1,7 @@
 package com.retail.pages;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -63,7 +64,13 @@ public class TransactionPage {
         qtyEl.clear();
         qtyEl.sendKeys(String.valueOf(quantity));
 
-        driver.findElement(submitButton).click();
+        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(submitButton));
+        btn.click();
+
+        wait.until(ExpectedConditions.or(
+                ExpectedConditions.urlToBe(baseUrl + "/transactions"),
+                ExpectedConditions.visibilityOfElementLocated(errorAlert)
+        ));
     }
 
     public boolean isErrorAlertDisplayed() {
@@ -77,14 +84,20 @@ public class TransactionPage {
     }
 
     public boolean hasTransaction(String itemName, String type, int quantity) {
-        List<WebElement> rows = driver.findElements(transactionRows);
-        for (WebElement row : rows) {
-            String nameText = row.findElement(By.cssSelector("[data-testid='tx-item-name']")).getText().trim();
-            String typeText = row.findElement(By.cssSelector("[data-testid='tx-type']")).getText().trim();
-            String qtyText = row.findElement(By.cssSelector("[data-testid='tx-quantity']")).getText().trim();
+        for (int i = 0; i < 3; i++) {
+            try {
+                List<WebElement> rows = driver.findElements(transactionRows);
+                for (WebElement row : rows) {
+                    String nameText = row.findElement(By.cssSelector("[data-testid='tx-item-name']")).getText().trim();
+                    String typeText = row.findElement(By.cssSelector("[data-testid='tx-type']")).getText().trim();
+                    String qtyText = row.findElement(By.cssSelector("[data-testid='tx-quantity']")).getText().trim();
 
-            if (nameText.equals(itemName) && typeText.equalsIgnoreCase(type) && qtyText.equals(String.valueOf(quantity))) {
-                return true;
+                    if (nameText.equals(itemName) && typeText.equalsIgnoreCase(type) && qtyText.equals(String.valueOf(quantity))) {
+                        return true;
+                    }
+                }
+                return false;
+            } catch (StaleElementReferenceException ignored) {
             }
         }
         return false;
