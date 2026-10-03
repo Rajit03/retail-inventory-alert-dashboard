@@ -6,7 +6,7 @@
 </div>
 
 <% if (typeof errors !== 'undefined' && errors && errors.length > 0) { %>
-  <div class="alert alert-danger">
+  <div class="alert alert-danger" data-testid="error-alert">
     <strong>Please fix the following errors:</strong>
     <ul>
       <% errors.forEach(err => { %>
@@ -25,6 +25,7 @@
           type="text" 
           id="name" 
           name="name" 
+          data-testid="name-input"
           class="form-control" 
           maxlength="100"
           required 
@@ -39,6 +40,7 @@
           type="text" 
           id="category" 
           name="category" 
+          data-testid="category-input"
           class="form-control" 
           maxlength="50"
           required 
@@ -53,6 +55,7 @@
           type="number" 
           id="price" 
           name="price" 
+          data-testid="price-input"
           class="form-control" 
           step="0.01" 
           min="0" 
@@ -67,6 +70,7 @@
           type="number" 
           id="quantity" 
           name="quantity" 
+          data-testid="quantity-input"
           class="form-control" 
           step="1" 
           min="0" 
@@ -81,6 +85,7 @@
           type="number" 
           id="reorder_threshold" 
           name="reorder_threshold" 
+          data-testid="threshold-input"
           class="form-control" 
           step="1" 
           min="0" 
@@ -90,7 +95,7 @@
       </div>
 
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Save Item</button>
+        <button type="submit" class="btn btn-primary" data-testid="submit-button">Save Item</button>
         <a href="/items" class="btn btn-secondary">Cancel</a>
       </div>
     </form>

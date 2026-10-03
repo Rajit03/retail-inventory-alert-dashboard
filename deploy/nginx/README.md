@@ -8,8 +8,8 @@ This document describes how to install Nginx on Windows and configure it as a re
 
 | Environment | Application Port (Internal) | Nginx Reverse Proxy Port (Public) | Public Entrypoint URL |
 | :--- | :--- | :--- | :--- |
-| **Development (`dev`)** | `3001` | `8081` | `http://localhost:8081/items` |
-| **Staging (`staging`)** | `3002` | `8082` | `http://localhost:8082/items` |
+| **Development (`dev`)** | `3001` | `8095` | `http://localhost:8095/items` |
+| **Staging (`staging`)** | `3002` | `8096` | `http://localhost:8096/items` |
 
 ---
 
@@ -88,7 +88,7 @@ cd C:\nginx
 
 Once both the application (via `scripts/deploy.ps1`) and Nginx are running:
 
-- Check Dev Health: `http://localhost:8081/health`
-- Access Dev Dashboard: `http://localhost:8081/items`
-- Check Staging Health: `http://localhost:8082/health`
-- Access Staging Dashboard: `http://localhost:8082/items`
+- Check Dev Health: `http://localhost:8095/health`
+- Access Dev Dashboard: `http://localhost:8095/items`
+- Check Staging Health: `http://localhost:8096/health`
+- Access Staging Dashboard: `http://localhost:8096/items`
