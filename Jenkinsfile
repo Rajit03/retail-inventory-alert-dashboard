@@ -92,7 +92,12 @@ pipeline {
         // Quality gate: failing UI tests fail this stage and stop Package and Deploy
         stage('UI Tests (Selenium)') {
             steps {
-                bat 'powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\run-selenium-ci.ps1'
+                withEnv([
+                    'PATH+NODE=C:/nvm4w/nodejs',
+                    'PATH+MAVEN=C:/DevTools/apache-maven-3.9.16/bin'
+                ]) {
+                    bat 'powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\run-selenium-ci.ps1'
+                }
             }
             post {
                 always {

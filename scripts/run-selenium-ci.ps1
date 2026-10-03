@@ -7,6 +7,20 @@ param(
 $ErrorActionPreference = 'Continue'
 $workspaceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 
+# Ensure Node, npm, Maven and Git are on PATH (especially when running under Jenkins service)
+$toolPaths = @(
+    'C:\nvm4w\nodejs',
+    'C:\Program Files\nodejs',
+    'C:\DevTools\apache-maven-3.9.16\bin',
+    'C:\Program Files\Git\bin',
+    'C:\Program Files\Git\cmd'
+)
+foreach ($p in $toolPaths) {
+    if ((Test-Path $p) -and ($env:PATH -notlike "*$p*")) {
+        $env:PATH = "$p;$env:PATH"
+    }
+}
+
 Write-Host "=========================================="
 Write-Host " Running Selenium Test Suite in CI"
 Write-Host " Port           : $Port"
