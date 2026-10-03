@@ -59,14 +59,6 @@ router.post('/transactions', (req, res) => {
     if (type === 'IN') {
       newQuantity = item.quantity + quantity;
     } else if (type === 'OUT') {
-      if (quantity > item.quantity) {
-        const items = db.prepare('SELECT id, name, quantity FROM items ORDER BY name ASC').all();
-        return res.status(400).render('transactions/new', {
-          items,
-          errors: [`Cannot remove ${quantity} units. Available stock is ${item.quantity}.`],
-          transaction: req.body
-        });
-      }
       newQuantity = item.quantity - quantity;
     } else if (type === 'ADJUST') {
       newQuantity = quantity;
