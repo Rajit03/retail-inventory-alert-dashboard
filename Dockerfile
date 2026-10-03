@@ -1,5 +1,22 @@
 # syntax=docker/dockerfile:1
-FROM node:22-bookworm-slim
+# Build stage for native dependencies
+FROM node:22-bookworm-slim AS build
+
+WORKDIR /app
+
+# Install native build tools for compiling better-sqlite3
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+ && rm -rf /var/lib/apt/lists/*
+
+# Copy package manifests and install production dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
+
+# Runtime stage
+FROM node:22-bookworm-slim AS runtime
 
 # OCI Labels
 LABEL org.opencontainers.image.title="Retail Inventory Alert Dashboard" \
@@ -7,14 +24,11 @@ LABEL org.opencontainers.image.title="Retail Inventory Alert Dashboard" \
       org.opencontainers.image.source="https://github.com/Rajit03/retail-inventory-alert-dashboard" \
       org.opencontainers.image.version="1.0.0"
 
-# Set working directory
 WORKDIR /app
 
-# Copy dependency definitions and install production dependencies
+# Copy production node_modules from build stage
+COPY --from=build /app/node_modules ./node_modules
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-# Copy application source code and public assets
 COPY src ./src
 COPY public ./public
 
