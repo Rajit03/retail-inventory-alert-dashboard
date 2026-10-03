@@ -36,25 +36,41 @@ public class ItemCatalogPage {
     }
 
     public void search(String text) {
+        WebElement oldBody = driver.findElement(By.tagName("body"));
         WebElement input = wait.until(ExpectedConditions.visibilityOfElementLocated(searchInput));
         input.clear();
         input.sendKeys(text);
         WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(filterButton));
         btn.click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
+        try {
+            wait.until(ExpectedConditions.stalenessOf(oldBody));
+        } catch (Exception ignored) {
+        }
+        wait.until(ExpectedConditions.presenceOfElementLocated(searchInput));
     }
 
     public void filterByStatus(String statusValue) {
+        WebElement oldBody = driver.findElement(By.tagName("body"));
         WebElement selectElem = wait.until(ExpectedConditions.visibilityOfElementLocated(statusSelect));
         Select select = new Select(selectElem);
         select.selectByValue(statusValue);
         WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(filterButton));
         btn.click();
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
+        try {
+            wait.until(ExpectedConditions.stalenessOf(oldBody));
+        } catch (Exception ignored) {
+        }
+        wait.until(ExpectedConditions.presenceOfElementLocated(searchInput));
     }
 
     public void resetFilters() {
+        WebElement oldBody = driver.findElement(By.tagName("body"));
         wait.until(ExpectedConditions.elementToBeClickable(resetFilterButton)).click();
+        try {
+            wait.until(ExpectedConditions.stalenessOf(oldBody));
+        } catch (Exception ignored) {
+        }
+        wait.until(ExpectedConditions.presenceOfElementLocated(searchInput));
     }
 
     public void clickAddNewItem() {
@@ -124,13 +140,11 @@ public class ItemCatalogPage {
     }
 
     public boolean isNoItemsFoundDisplayed() {
-        for (int i = 0; i < 3; i++) {
-            try {
-                List<WebElement> messages = driver.findElements(noItemsMessage);
-                return !messages.isEmpty() && messages.get(0).isDisplayed();
-            } catch (StaleElementReferenceException ignored) {
-            }
+        try {
+            WebElement elem = wait.until(ExpectedConditions.visibilityOfElementLocated(noItemsMessage));
+            return elem.isDisplayed();
+        } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 }

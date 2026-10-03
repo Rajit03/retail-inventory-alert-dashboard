@@ -89,6 +89,21 @@ pipeline {
             }
         }
 
+        // Quality gate: failing UI tests fail this stage and stop Package and Deploy
+        stage('UI Tests (Selenium)') {
+            steps {
+                bat 'powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\run-selenium-ci.ps1'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: false,
+                          testResults: 'tests/selenium/target/surefire-reports/*.xml'
+                    archiveArtifacts allowEmptyArchive: true,
+                                     artifacts: 'tests/selenium/target/screenshots/*.png, tests/selenium/target/site/surefire-report.html, tests/selenium/target/ci-app*.log'
+                }
+            }
+        }
+
         stage('Package') {
             steps {
                 withEnv(['PATH+NODE=C:/nvm4w/nodejs']) {

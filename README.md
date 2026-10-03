@@ -124,7 +124,7 @@ The repository includes automated build, syntax verification, testing, and packa
 
 ## Pipeline and Deployment
 
-The repository includes a declarative Jenkins pipeline (`Jenkinsfile`) supporting automated Checkout, Build, Packaging, and Deployment to `dev` (port 3001, Nginx port 8095) and `staging` (port 3002, Nginx port 8096) environments with atomic release junctions, shared database persistence, and automated health checks.
+The repository includes a declarative Jenkins pipeline (`Jenkinsfile`) supporting automated Checkout, Build, Selenium UI Quality Gate, Packaging, and Deployment to `dev` (port 3001, Nginx port 8095) and `staging` (port 3002, Nginx port 8096) environments with atomic release junctions, shared database persistence, and automated health checks. The Selenium E2E suite serves as a strict quality gate in the pipeline, automatically halting deployment if any UI test fails.
 
 For complete documentation on pipeline stages, parameters, directory layout, and Nginx reverse proxy configuration, refer to the [Pipeline & Deployment Guide](docs/pipeline-setup.md).
 
@@ -132,7 +132,7 @@ For complete documentation on pipeline stages, parameters, directory layout, and
 
 ## Automated UI Tests
 
-The repository includes a comprehensive Selenium WebDriver test suite in `tests/selenium` built with Java 17 and JUnit 5. It executes 5 critical end-to-end user journeys (item creation, input validation, stock transactions, search/filter, and exception alerts) against configurable environments with automatic screenshot capture on failure and HTML report generation.
+The repository includes a comprehensive Selenium WebDriver test suite in `tests/selenium` built with Java 17 and JUnit 5. It executes 5 critical end-to-end user journeys (item creation, input validation, stock transactions, search/filter, and exception alerts) against configurable environments with automatic screenshot capture on failure and HTML report generation. The suite runs in CI as an automated quality gate before packaging and deployment.
 
 For complete details on test architecture, journeys, execution parameters, and reporting, see the [Selenium Test Plan](docs/selenium-test-plan.md).
 
