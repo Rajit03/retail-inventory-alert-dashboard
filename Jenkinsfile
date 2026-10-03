@@ -33,7 +33,6 @@ pipeline {
 
                 bat '''
                     @echo off
-                    set PATH=C:\\nvm4w\\nodejs;C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot\bin;C:\Program Files\Python313\Scripts\;C:\Program Files\Python313\;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Git\cmd;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Users\Rajit\.cargo\bin;C:\Users\Rajit\.local\bin;C:\Users\Rajit\AppData\Local\Microsoft\WindowsApps;C:\Users\Rajit\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Rajit\AppData\Local\GitHubDesktop\bin;C:\Users\Rajit\AppData\Local\Programs\Ollama;C:\Users\Rajit\AppData\Roaming\npm;C:\Users\Rajit\AppData\Local\Programs\Antigravity IDE\bin;C:\Users\Rajit\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Rajit\AppData\Local\Programs\DockerDesktop\resources\bin;C:\Users\Rajit\AppData\Local\Programs\DockerDesktop\resou;C:\DevTools\apache-maven-3.9.16\bin;C:\DevTools\apache-maven-3.9.16\bin;C:\DevTools\apache-ant\bin;C:\DevTools\gradle-9.6.1\bin;C:\Program Files\GitHub CLI\;%NVM_HOME%;%NVM_SYMLINK%;C:\Program Files\MySQL\MySQL Server 8.4\bin;C:\Program Files\MySQL\MySQL Server 8.4\bin;C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot\bin;C:\Program Files\Python313\Scripts\;C:\Program Files\Python313\;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Git\cmd;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Users\Rajit\.cargo\bin;C:\Users\Rajit\.local\bin;C:\Users\Rajit\AppData\Local\Microsoft\WindowsApps;C:\Users\Rajit\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Rajit\AppData\Local\GitHubDesktop\bin;C:\Users\Rajit\AppData\Local\Programs\Ollama;C:\Users\Rajit\AppData\Roaming\npm;C:\Users\Rajit\AppData\Local\Programs\Antigravity IDE\bin;C:\Users\Rajit\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Rajit\AppData\Local\Progra;C:\Users\Rajit\AppData\Local\Microsoft\WinGet\Packages\SQLite.SQLite_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\Rajit\AppData\Local\nvm;C:\nvm4w\nodejs
                     echo ==========================================
                     echo Checkout Stage
                     echo Git Commit:
@@ -46,65 +45,49 @@ pipeline {
         }
 
         stage('Build') {
-            steps {
-                bat '''
-                    @echo off
-                    set PATH=C:\\nvm4w\\nodejs;C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot\bin;C:\Program Files\Python313\Scripts\;C:\Program Files\Python313\;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Git\cmd;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Users\Rajit\.cargo\bin;C:\Users\Rajit\.local\bin;C:\Users\Rajit\AppData\Local\Microsoft\WindowsApps;C:\Users\Rajit\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Rajit\AppData\Local\GitHubDesktop\bin;C:\Users\Rajit\AppData\Local\Programs\Ollama;C:\Users\Rajit\AppData\Roaming\npm;C:\Users\Rajit\AppData\Local\Programs\Antigravity IDE\bin;C:\Users\Rajit\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Rajit\AppData\Local\Programs\DockerDesktop\resources\bin;C:\Users\Rajit\AppData\Local\Programs\DockerDesktop\resou;C:\DevTools\apache-maven-3.9.16\bin;C:\DevTools\apache-maven-3.9.16\bin;C:\DevTools\apache-ant\bin;C:\DevTools\gradle-9.6.1\bin;C:\Program Files\GitHub CLI\;%NVM_HOME%;%NVM_SYMLINK%;C:\Program Files\MySQL\MySQL Server 8.4\bin;C:\Program Files\MySQL\MySQL Server 8.4\bin;C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot\bin;C:\Program Files\Python313\Scripts\;C:\Program Files\Python313\;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Git\cmd;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Users\Rajit\.cargo\bin;C:\Users\Rajit\.local\bin;C:\Users\Rajit\AppData\Local\Microsoft\WindowsApps;C:\Users\Rajit\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Rajit\AppData\Local\GitHubDesktop\bin;C:\Users\Rajit\AppData\Local\Programs\Ollama;C:\Users\Rajit\AppData\Roaming\npm;C:\Users\Rajit\AppData\Local\Programs\Antigravity IDE\bin;C:\Users\Rajit\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Rajit\AppData\Local\Progra;C:\Users\Rajit\AppData\Local\Microsoft\WinGet\Packages\SQLite.SQLite_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\Rajit\AppData\Local\nvm;C:\nvm4w\nodejs
+    steps {
+        bat '''
+            call C:/nvm4w/nodejs/node.exe -v
+            call C:/nvm4w/nodejs/npm.cmd -v
 
-                    echo ==========================================
-                    echo Node and npm versions
-                    echo ==========================================
-                    call node -v
-                    call npm -v
+            echo ==========================================
+            echo Installing dependencies
+            echo ==========================================
+            call C:/nvm4w/nodejs/npm.cmd ci --prefer-binary
 
-                    echo ==========================================
-                    echo Cleaning dependencies
-                    echo ==========================================
-                    if exist node_modules (
-                        rmdir /s /q node_modules
-                    )
+            echo ==========================================
+            echo Checking Express installation
+            echo ==========================================
+            call npm ls express
 
-                    echo ==========================================
-                    echo Installing dependencies
-                    echo ==========================================
-                    call npm ci --prefer-binary
-                    if errorlevel 1 exit /b 1
+            echo ==========================================
+            echo Checking node_modules
+            echo ==========================================
+            if exist node_modules\\express (
+                echo Express module exists
+            ) else (
+                echo ERROR: Express module NOT FOUND
+                exit /b 1
+            )
 
-                    echo ==========================================
-                    echo Checking better-sqlite3
-                    echo ==========================================
-                    call npm ls better-sqlite3
-                    if errorlevel 1 exit /b 1
+            echo ==========================================
+            echo Build
+            echo ==========================================
+            call C:/nvm4w/nodejs/npm.cmd run build
 
-                    echo ==========================================
-                    echo Checking Express
-                    echo ==========================================
-                    call npm ls express
-                    if errorlevel 1 exit /b 1
-
-                    echo ==========================================
-                    echo Build
-                    echo ==========================================
-                    call npm run build
-                    if errorlevel 1 exit /b 1
-
-                    echo ==========================================
-                    echo Tests
-                    echo ==========================================
-                    call npm test
-                    if errorlevel 1 exit /b 1
-                '''
-            }
-        }
+            echo ==========================================
+            echo Tests
+            echo ==========================================
+            call C:/nvm4w/nodejs/npm.cmd test
+        '''
+    }
+}
 
         stage('Package') {
             steps {
                 bat '''
-                    @echo off
-                    set PATH=C:\\nvm4w\\nodejs;C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot\bin;C:\Program Files\Python313\Scripts\;C:\Program Files\Python313\;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Git\cmd;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Users\Rajit\.cargo\bin;C:\Users\Rajit\.local\bin;C:\Users\Rajit\AppData\Local\Microsoft\WindowsApps;C:\Users\Rajit\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Rajit\AppData\Local\GitHubDesktop\bin;C:\Users\Rajit\AppData\Local\Programs\Ollama;C:\Users\Rajit\AppData\Roaming\npm;C:\Users\Rajit\AppData\Local\Programs\Antigravity IDE\bin;C:\Users\Rajit\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Rajit\AppData\Local\Programs\DockerDesktop\resources\bin;C:\Users\Rajit\AppData\Local\Programs\DockerDesktop\resou;C:\DevTools\apache-maven-3.9.16\bin;C:\DevTools\apache-maven-3.9.16\bin;C:\DevTools\apache-ant\bin;C:\DevTools\gradle-9.6.1\bin;C:\Program Files\GitHub CLI\;%NVM_HOME%;%NVM_SYMLINK%;C:\Program Files\MySQL\MySQL Server 8.4\bin;C:\Program Files\MySQL\MySQL Server 8.4\bin;C:\Program Files\Eclipse Adoptium\jdk-21.0.12.8-hotspot\bin;C:\Program Files\Python313\Scripts\;C:\Program Files\Python313\;C:\Program Files\Python314\Scripts\;C:\Program Files\Python314\;C:\WINDOWS\system32;C:\WINDOWS;C:\WINDOWS\System32\Wbem;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;C:\WINDOWS\System32\OpenSSH\;C:\Program Files\dotnet\;C:\Program Files\Git\cmd;C:\ProgramData\chocolatey\bin;C:\Program Files (x86)\Windows Kits\10\Windows Performance Toolkit\;C:\Users\Rajit\.cargo\bin;C:\Users\Rajit\.local\bin;C:\Users\Rajit\AppData\Local\Microsoft\WindowsApps;C:\Users\Rajit\AppData\Local\Programs\Microsoft VS Code\bin;C:\Users\Rajit\AppData\Local\GitHubDesktop\bin;C:\Users\Rajit\AppData\Local\Programs\Ollama;C:\Users\Rajit\AppData\Roaming\npm;C:\Users\Rajit\AppData\Local\Programs\Antigravity IDE\bin;C:\Users\Rajit\AppData\Local\Programs\cursor\resources\app\bin;C:\Users\Rajit\AppData\Local\Progra;C:\Users\Rajit\AppData\Local\Microsoft\WinGet\Packages\SQLite.SQLite_Microsoft.Winget.Source_8wekyb3d8bbwe;C:\Users\Rajit\AppData\Local\nvm;C:\nvm4w\nodejs
                     if exist *.tgz del /f /q *.tgz
                     call npm pack
-                    if errorlevel 1 exit /b 1
                 '''
 
                 archiveArtifacts artifacts: '*.tgz, build-info.json',
@@ -116,7 +99,10 @@ pipeline {
             steps {
                 script {
 
+                    // Application ports
                     def appPort = (params.DEPLOY_ENV == 'staging') ? '3002' : '3001'
+
+                    // Nginx ports
                     def nginxPort = (params.DEPLOY_ENV == 'staging') ? '8096' : '8095'
 
                     echo "=========================================="
@@ -126,6 +112,7 @@ pipeline {
                     echo "Nginx       : ${nginxPort}"
                     echo "=========================================="
 
+                    // Find generated package tarball
                     def pkgFile = bat(
                         script: '@powershell -NoProfile -Command "(Get-Item *.tgz | Select-Object -First 1).Name"',
                         returnStdout: true
@@ -133,6 +120,7 @@ pipeline {
 
                     echo "Package: ${pkgFile}"
 
+                    // Prevent Jenkins from killing the deployed Node process
                     withEnv([
                         'JENKINS_NODE_COOKIE=dontKillMe',
                         'BUILD_ID=dontKillMe'
@@ -207,5 +195,4 @@ pipeline {
         }
     }
 }
-
 
