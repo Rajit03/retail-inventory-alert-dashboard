@@ -58,7 +58,7 @@ pipeline {
                         echo ==========================================
                         echo Installing dependencies
                         echo ==========================================
-                        call npm ci --prefer-binary
+                        call npm ci --prefer-binary --ignore-scripts
 
                         echo ==========================================
                         echo Checking Express installation
