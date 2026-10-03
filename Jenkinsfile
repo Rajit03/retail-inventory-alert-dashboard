@@ -46,7 +46,11 @@ pipeline {
 
         stage('Build') {
             steps {
-                withEnv(['PATH+NODE=C:/nvm4w/nodejs']) {
+                withEnv([
+                    'PATH+NODE=C:/nvm4w/nodejs',
+                    'PYTHON=C:/Program Files/Python313/python.exe',
+                    'npm_config_python=C:/Program Files/Python313/python.exe'
+                ]) {
                     bat '''
                         call node -v
                         call npm -v
@@ -128,7 +132,9 @@ pipeline {
                     withEnv([
                         'JENKINS_NODE_COOKIE=dontKillMe',
                         'BUILD_ID=dontKillMe',
-                        'PATH+NODE=C:/nvm4w/nodejs'
+                        'PATH+NODE=C:/nvm4w/nodejs',
+                        'PYTHON=C:/Program Files/Python313/python.exe',
+                        'npm_config_python=C:/Program Files/Python313/python.exe'
                     ]) {
 
                         bat """
