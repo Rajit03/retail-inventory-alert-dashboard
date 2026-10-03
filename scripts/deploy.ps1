@@ -100,7 +100,7 @@ if (-not (Test-Path -Path $targetLock)) {
 }
 Push-Location $releaseDir
 try {
-    cmd /c "npm ci --omit=dev"
+    cmd /c "npm ci --omit=dev --ignore-scripts"
     if ($LASTEXITCODE -ne 0) {
         throw "npm ci --omit=dev failed with exit code $LASTEXITCODE"
     }
