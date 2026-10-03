@@ -1,6 +1,7 @@
 package com.retail.pages;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -38,14 +39,18 @@ public class ItemCatalogPage {
         WebElement input = wait.until(ExpectedConditions.visibilityOfElementLocated(searchInput));
         input.clear();
         input.sendKeys(text);
-        driver.findElement(filterButton).click();
+        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(filterButton));
+        btn.click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
     }
 
     public void filterByStatus(String statusValue) {
         WebElement selectElem = wait.until(ExpectedConditions.visibilityOfElementLocated(statusSelect));
         Select select = new Select(selectElem);
         select.selectByValue(statusValue);
-        driver.findElement(filterButton).click();
+        WebElement btn = wait.until(ExpectedConditions.elementToBeClickable(filterButton));
+        btn.click();
+        wait.until(ExpectedConditions.presenceOfElementLocated(By.tagName("body")));
     }
 
     public void resetFilters() {
@@ -57,22 +62,35 @@ public class ItemCatalogPage {
     }
 
     public boolean hasItem(String itemName) {
-        List<WebElement> rows = driver.findElements(itemRows);
-        for (WebElement row : rows) {
-            List<WebElement> nameElements = row.findElements(By.cssSelector("[data-testid='item-name']"));
-            if (!nameElements.isEmpty() && nameElements.get(0).getText().trim().equals(itemName)) {
-                return true;
+        for (int i = 0; i < 3; i++) {
+            try {
+                List<WebElement> rows = driver.findElements(itemRows);
+                for (WebElement row : rows) {
+                    List<WebElement> nameElements = row.findElements(By.cssSelector("[data-testid='item-name']"));
+                    if (!nameElements.isEmpty() && nameElements.get(0).getText().trim().equals(itemName)) {
+                        return true;
+                    }
+                }
+                return false;
+            } catch (StaleElementReferenceException ignored) {
+                // Retry if DOM reloaded during iteration
             }
         }
         return false;
     }
 
     public WebElement getItemRow(String itemName) {
-        List<WebElement> rows = driver.findElements(itemRows);
-        for (WebElement row : rows) {
-            List<WebElement> nameElements = row.findElements(By.cssSelector("[data-testid='item-name']"));
-            if (!nameElements.isEmpty() && nameElements.get(0).getText().trim().equals(itemName)) {
-                return row;
+        for (int i = 0; i < 3; i++) {
+            try {
+                List<WebElement> rows = driver.findElements(itemRows);
+                for (WebElement row : rows) {
+                    List<WebElement> nameElements = row.findElements(By.cssSelector("[data-testid='item-name']"));
+                    if (!nameElements.isEmpty() && nameElements.get(0).getText().trim().equals(itemName)) {
+                        return row;
+                    }
+                }
+                return null;
+            } catch (StaleElementReferenceException ignored) {
             }
         }
         return null;
@@ -87,10 +105,16 @@ public class ItemCatalogPage {
     }
 
     public int getItemQuantity(String itemName) {
-        WebElement row = getItemRow(itemName);
-        if (row != null) {
-            String text = row.findElement(By.cssSelector("[data-testid='item-quantity']")).getText().trim();
-            return Integer.parseInt(text);
+        for (int i = 0; i < 3; i++) {
+            try {
+                WebElement row = getItemRow(itemName);
+                if (row != null) {
+                    String text = row.findElement(By.cssSelector("[data-testid='item-quantity']")).getText().trim();
+                    return Integer.parseInt(text);
+                }
+                return -1;
+            } catch (StaleElementReferenceException ignored) {
+            }
         }
         return -1;
     }
@@ -100,7 +124,13 @@ public class ItemCatalogPage {
     }
 
     public boolean isNoItemsFoundDisplayed() {
-        List<WebElement> messages = driver.findElements(noItemsMessage);
-        return !messages.isEmpty() && messages.get(0).isDisplayed();
+        for (int i = 0; i < 3; i++) {
+            try {
+                List<WebElement> messages = driver.findElements(noItemsMessage);
+                return !messages.isEmpty() && messages.get(0).isDisplayed();
+            } catch (StaleElementReferenceException ignored) {
+            }
+        }
+        return false;
     }
 }

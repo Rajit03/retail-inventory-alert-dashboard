@@ -7,7 +7,6 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import java.util.List;
 import java.util.Locale;
 
 public class ItemFormPage {
@@ -74,8 +73,12 @@ public class ItemFormPage {
     }
 
     public boolean isErrorAlertDisplayed() {
-        List<WebElement> alerts = driver.findElements(errorAlert);
-        return !alerts.isEmpty() && alerts.get(0).isDisplayed();
+        try {
+            WebElement alert = wait.until(ExpectedConditions.visibilityOfElementLocated(errorAlert));
+            return alert.isDisplayed();
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     public String getErrorMessage() {
