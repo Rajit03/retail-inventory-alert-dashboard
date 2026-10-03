@@ -9,7 +9,7 @@ This guide documents the automated declarative CI/CD pipeline (`Jenkinsfile`), d
 The declarative pipeline is defined in the root `Jenkinsfile` and executes the following sequential stages:
 
 ```
-[ Checkout ] ➔ [ Build ] ➔ [ Package ] ➔ [ Deploy ]
+[ Checkout ] ➔ [ Build ] ➔ [ UI Tests (Selenium) ] ➔ [ Package ] ➔ [ Deploy ]
 ```
 
 1. **Checkout**: Checks out source code from Git SCM, prints the current commit hash, and logs user-selected parameters (`DEPLOY_ENV`, `DEPLOY_ROOT`).
@@ -18,18 +18,47 @@ The declarative pipeline is defined in the root `Jenkinsfile` and executes the f
    - Runs clean dependency installation (`npm ci`).
    - Executes validation and build metadata generation (`npm run build`).
    - Executes unit tests and API smoke tests (`npm test`).
-3. **Package**:
+3. **UI Tests (Selenium) — Quality Gate**:
+   - Runs `scripts/run-selenium-ci.ps1` using PowerShell.
+   - Cleans up existing port 3100 listeners, creates a dedicated test database (`data/selenium-ci.db`), seeds sample data, and boots an isolated background test instance.
+   - Polls `/health` until ready, then executes the full Maven Selenium WebDriver E2E suite (`mvn test`) in headless Chrome against `http://localhost:3100`.
+   - **Quality Gate Behavior**: If any UI test fails, the stage fails and terminates the pipeline immediately. **Package and Deploy stages never run on UI test failure.**
+   - Generates Surefire HTML report (`mvn surefire-report:report-only`) and cleans up the test server process tree and database.
+   - Publishes test results and archives build artifacts in `post { always { ... } }`.
+4. **Package**:
    - Removes any existing `*.tgz` archives.
    - Bundles the application using `npm pack`.
    - Archives `*.tgz` and `build-info.json` as build artifacts with fingerprinting.
-4. **Deploy**:
+5. **Deploy**:
    - Maps the selected environment to internal Node.js port and public Nginx proxy port.
    - Executes `scripts/deploy.ps1` wrapped in `JENKINS_NODE_COOKIE=dontKillMe` to prevent Jenkins process tree killer from terminating the background server.
    - Verifies public accessibility through Nginx and prints the application dashboard URL.
 
 ---
 
-## 2. Pipeline Parameters
+## 2. Test Results & Build Artifacts in Jenkins
+
+The `UI Tests (Selenium)` stage publishes test reports and archives artifacts so build failures can be inspected effortlessly:
+
+- **Jenkins Test Result Page**: The JUnit plugin parses `tests/selenium/target/surefire-reports/*.xml`, presenting interactive test breakdown, failure stack traces, and historical pass/fail trends.
+- **Archived Build Artifacts**:
+  - `tests/selenium/target/screenshots/*.png`: Automatic screenshots captured upon any test failure via `ScreenshotOnFailureExtension`.
+  - `tests/selenium/target/site/surefire-report.html`: Maven Surefire HTML test report.
+  - `tests/selenium/target/ci-app*.log`: Standard output (`ci-app.log`) and standard error (`ci-app-err.log`) from the background test server.
+
+---
+
+## 3. Host & Jenkins Agent Prerequisites
+
+To ensure the automated UI test stage succeeds on the Jenkins agent or `LocalSystem` service:
+1. **Java 17+ / JDK**: Required for compiling and running the JUnit 5 / Selenium test suite.
+2. **Apache Maven**: `mvn` must be installed and configured in the system `PATH`.
+3. **Google Chrome**: Google Chrome must be installed on the host (Selenium Manager automatically provisions compatible ChromeDriver binaries).
+4. **Node.js & npm**: Configured on `PATH` for running the server and seed scripts.
+
+---
+
+## 4. Pipeline Parameters
 
 | Parameter | Type | Default Value | Description |
 | :--- | :--- | :--- | :--- |
@@ -38,7 +67,7 @@ The declarative pipeline is defined in the root `Jenkinsfile` and executes the f
 
 ---
 
-## 3. Environment to Port Mapping
+## 5. Environment to Port Mapping
 
 | Environment | Internal Application Port | Public Nginx Proxy Port | Entrypoint URL |
 | :--- | :--- | :--- | :--- |
@@ -47,7 +76,7 @@ The declarative pipeline is defined in the root `Jenkinsfile` and executes the f
 
 ---
 
-## 4. Deployment Directory & Release Layout
+## 6. Deployment Directory & Release Layout
 
 The deployment script (`scripts/deploy.ps1`) establishes an enterprise-grade atomic release layout per environment:
 
@@ -76,7 +105,7 @@ C:\deploy\retail-inventory\<env>\
 
 ---
 
-## 5. Nginx Reverse Proxy Setup
+## 7. Nginx Reverse Proxy Setup
 
 Nginx acts as the public reverse proxy fronting the Node.js application.
 
@@ -85,7 +114,7 @@ Nginx acts as the public reverse proxy fronting the Node.js application.
 
 ---
 
-## 6. Jenkins Pipeline Job Setup
+## 8. Jenkins Pipeline Job Setup
 
 To create the automated Jenkins Pipeline job:
 
