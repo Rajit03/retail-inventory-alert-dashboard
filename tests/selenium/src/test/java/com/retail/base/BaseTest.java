@@ -3,6 +3,7 @@ package com.retail.base;
 import com.retail.config.TestConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -10,6 +11,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
 
+@ExtendWith(ScreenshotOnFailureExtension.class)
 public abstract class BaseTest {
     protected WebDriver driver;
     protected WebDriverWait wait;
