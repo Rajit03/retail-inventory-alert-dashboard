@@ -138,6 +138,32 @@ For complete details on test architecture, journeys, execution parameters, and r
 
 ---
 
+## Docker Containerization
+
+The application is containerized with a production-ready, multi-stage Debian-based Docker image (`node:22-bookworm-slim`), non-root execution (`USER node`), persistent named volume storage (`ria-data`), and automated health checking.
+
+### Build Image
+```bash
+docker build -t retail-inventory-alert:1.0.0 -t retail-inventory-alert:latest .
+```
+
+### Run Container
+```bash
+docker run -d --name ria-dev -p 3200:3000 -v ria-data:/app/data retail-inventory-alert:latest
+```
+
+### Seed & Access Container
+- **Web Dashboard**: [http://localhost:3200/items](http://localhost:3200/items)
+- **Health Check**: [http://localhost:3200/health](http://localhost:3200/health)
+- **Seed Initial Data**:
+  ```bash
+  docker exec ria-dev npm run seed
+  ```
+
+For full details on image specifications, line-by-line Dockerfile explanations, volume persistence, and container lifecycle commands, see the [Docker Lifecycle Guide](docs/docker-lifecycle.md).
+
+---
+
 ## Branching and Commits
 
 We follow a structured branching model (`main`, `develop`, `feature/*`, `bugfix/*`) and conventional commit standards. For complete branching rules, pull request workflows, and commit message conventions, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
