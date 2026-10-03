@@ -42,8 +42,8 @@ The declarative pipeline is defined in the root `Jenkinsfile` and executes the f
 
 | Environment | Internal Application Port | Public Nginx Proxy Port | Entrypoint URL |
 | :--- | :--- | :--- | :--- |
-| **Development (`dev`)** | `3001` | `8081` | `http://localhost:8081/items` |
-| **Staging (`staging`)** | `3002` | `8082` | `http://localhost:8082/items` |
+| **Development (`dev`)** | `3001` | `8095` | `http://localhost:8095/items` |
+| **Staging (`staging`)** | `3002` | `8096` | `http://localhost:8096/items` |
 
 ---
 
