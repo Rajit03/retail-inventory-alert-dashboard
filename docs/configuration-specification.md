@@ -12,13 +12,7 @@ This document specifies the Linux node configuration managed by Ansible (Task 13
 | Target node | Same Ubuntu-Retail instance | `ansible_connection=local` (inventory host `retail-node` in group `retail_nodes`) | Passwordless `sudo` for the Linux user. |
 | Ansible | `ansible [core 2.20.1]` | Project config `ansible/ansible.cfg` | `ANSIBLE_CONFIG` must be set because `/mnt/c` is world-writable and Ansible otherwise ignores `ansible.cfg`. |
 
-**How to run** (from Windows PowerShell; repo on `/mnt/c`):
-
-```powershell
-wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml"
-```
-
-Docker is **not** used inside WSL for this task. Puppet is **not** used.
+Docker is **not** used inside WSL for this task. Puppet is **not** used. See [How to run](#9-how-to-run) for the exact commands.
 
 ---
 
@@ -109,3 +103,27 @@ These ports avoid Windows/WSL ports already in use (3001, 3002, 3100, 3200, 5000
 | `base_packages` | `nginx`, `curl`, `git`, `ca-certificates`, `gnupg`, `build-essential`, `python3` | Packages installed by the `common` role |
 
 Inventory: `ansible/inventory/hosts.ini`. Group variables: `ansible/inventory/group_vars/retail_nodes.yml`. Playbook: `ansible/site.yml` (roles `common`, `nodejs`, `app_service`, `nginx`).
+
+---
+
+## 9. How to run
+
+Always use the **Ubuntu-Retail** WSL distribution (not `Ubuntu`). Ansible ignores `ansible.cfg` in a world-writable folder such as `/mnt/c` unless `ANSIBLE_CONFIG` is set.
+
+From Windows PowerShell:
+
+```powershell
+wsl -d Ubuntu-Retail -- echo ok
+
+wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml --syntax-check"
+
+wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml --check --diff"
+
+wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml"
+
+wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml --tags nginx"
+```
+
+Role tags: `common`, `nodejs`, `app_service`, `nginx`.
+
+This playbook only **prepares** the node. Application release deployment, idempotency demonstration, health check of the Node.js app, and rollback come in **Task 14**.
