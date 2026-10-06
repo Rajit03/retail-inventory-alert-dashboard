@@ -1,0 +1,134 @@
+﻿PS> docker version --format "{{.Server.Version}}"
+29.7.2
+
+PS> docker images retail-inventory-alert
+IMAGE                           ID             DISK USAGE   CONTENT SIZE   EXTRA
+retail-inventory-alert:1.0.0    fec21742ef55        417MB          105MB        
+retail-inventory-alert:latest   fec21742ef55        417MB          105MB
+
+PS> docker history retail-inventory-alert:latest
+IMAGE          CREATED              CREATED BY                                      SIZE      COMMENT
+fec21742ef55   About a minute ago   CMD ["node" "src/server.js"]                    0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   HEALTHCHECK {Test:[CMD-SHELL node -e "fetch(ΓÇª   0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   EXPOSE [3000/tcp]                               0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   USER node                                       0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   VOLUME [/app/data]                              0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   RUN /bin/sh -c mkdir -p /app/data && chown -ΓÇª   33.1MB    buildkit.dockerfile.v0
+<missing>      About a minute ago   ENV NODE_ENV=production PORT=3000 DB_PATH=/aΓÇª   0B        buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY public ./public # buildkit                 24.6kB    buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY src ./src # buildkit                       147kB     buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY package.json package-lock.json ./ # buiΓÇª   49.2kB    buildkit.dockerfile.v0
+<missing>      About a minute ago   COPY /app/node_modules ./node_modules # builΓÇª   32.9MB    buildkit.dockerfile.v0
+<missing>      3 minutes ago        WORKDIR /app                                    8.19kB    buildkit.dockerfile.v0
+<missing>      3 minutes ago        LABEL org.opencontainers.image.title=Retail ΓÇª   0B        buildkit.dockerfile.v0
+<missing>      9 days ago           CMD ["node"]                                    0B        buildkit.dockerfile.v0
+<missing>      9 days ago           ENTRYPOINT ["docker-entrypoint.sh"]             0B        buildkit.dockerfile.v0
+<missing>      9 days ago           COPY docker-entrypoint.sh /usr/local/bin/ # ΓÇª   20.5kB    buildkit.dockerfile.v0
+<missing>      9 days ago           RUN /bin/sh -c set -ex   && savedAptMark="$(ΓÇª   7.33MB    buildkit.dockerfile.v0
+<missing>      9 days ago           ENV YARN_VERSION=1.22.22                        0B        buildkit.dockerfile.v0
+<missing>      9 days ago           RUN /bin/sh -c ARCH= OPENSSL_ARCH= && dpkgArΓÇª   154MB     buildkit.dockerfile.v0
+<missing>      9 days ago           ENV NODE_VERSION=22.23.3                        0B        buildkit.dockerfile.v0
+<missing>      9 days ago           RUN /bin/sh -c groupadd --gid 1000 node   &&ΓÇª   69.6kB    buildkit.dockerfile.v0
+<missing>      2 weeks ago          # debian.sh --arch 'amd64' out/ 'bookworm' 'ΓÇª   85.3MB    debuerreotype 0.17
+
+PS> docker image inspect retail-inventory-alert:latest --format "ID={{.Id}} Size={{.Size}} Created={{.Created}} Arch={{.Architecture}} OS={{.Os}} User={{.Config.User}} ExposedPorts={{.Config.ExposedPorts}}"
+ID=sha256:fec21742ef550f126870a937443443136d43399618fa35a56fc7e9210be51772 Size=104509960 Created=2026-10-03T12:34:41.612158952Z Arch=amd64 OS=linux User=node ExposedPorts=map[3000/tcp:map[]]
+
+PS> docker run -d --name ria-dev -p 3200:3000 -v ria-data:/app/data retail-inventory-alert:latest
+e5236189d12c2e36c09aabf8bed2e8f87c7605a8af335252327baebac2db3a6e
+
+PS> docker ps
+CONTAINER ID   IMAGE                           COMMAND                  CREATED         STATUS                   PORTS                                         NAMES
+e5236189d12c   retail-inventory-alert:latest   "docker-entrypoint.sΓÇª"   7 seconds ago   Up 6 seconds (healthy)   0.0.0.0:3200->3000/tcp, [::]:3200->3000/tcp   ria-dev
+
+PS> docker logs ria-dev
+Server is running on port 3000
+
+PS> docker logs --tail 5 ria-dev
+Server is running on port 3000
+
+PS> docker exec ria-dev npm run seed
+
+> retail-inventory-alert-dashboard@1.0.0 seed
+> node src/db/seed.js
+
+Seeding sample items...
+Seeding complete: 7 items inserted, 0 items skipped.
+
+PS> Invoke-RestMethod http://localhost:3200/health
+{"status":"UP"}
+
+PS> (Invoke-RestMethod http://localhost:3200/api/items).Count
+7
+
+PS> docker port ria-dev
+3000/tcp -> 0.0.0.0:3200
+3000/tcp -> [::]:3200
+
+PS> docker stats --no-stream ria-dev
+CONTAINER ID   NAME      CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O     PIDS
+e5236189d12c   ria-dev   1.50%     18.09MiB / 3.699GiB   0.48%     2.46kB / 2.35kB   0B / 16.4kB   11
+
+PS> docker inspect ria-dev --format "State={{.State.Status}} Health={{.State.Health.Status}} StartedAt={{.State.StartedAt}} Ports={{json .NetworkSettings.Ports}} Mounts={{json .Mounts}}"
+State=running Health=healthy StartedAt=2026-10-03T12:35:45.145304986Z Ports={"3000/tcp":[{"HostIp":"0.0.0.0","HostPort":"3200"},{"HostIp":"::","HostPort":"3200"}]} Mounts=[{"Type":"volume","Name":"ria-data","Source":"/var/lib/docker/volumes/ria-data/_data","Destination":"/app/data","Driver":"local","Mode":"z","RW":true,"Propagation":""}]
+
+PS> docker stop ria-dev
+ria-dev
+
+PS> docker ps
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+
+PS> docker ps -a
+CONTAINER ID   IMAGE                           COMMAND                  CREATED          STATUS                                PORTS     NAMES
+e5236189d12c   retail-inventory-alert:latest   "docker-entrypoint.sΓÇª"   13 seconds ago   Exited (137) Less than a second ago             ria-dev
+
+PS> docker start ria-dev
+ria-dev
+
+PS> docker ps
+CONTAINER ID   IMAGE                           COMMAND                  CREATED          STATUS                            PORTS                                         NAMES
+e5236189d12c   retail-inventory-alert:latest   "docker-entrypoint.sΓÇª"   16 seconds ago   Up 2 seconds (health: starting)   0.0.0.0:3200->3000/tcp, [::]:3200->3000/tcp   ria-dev
+
+PS> docker restart ria-dev
+ria-dev
+
+PS> docker ps
+CONTAINER ID   IMAGE                           COMMAND                  CREATED          STATUS                            PORTS                                         NAMES
+e5236189d12c   retail-inventory-alert:latest   "docker-entrypoint.sΓÇª"   21 seconds ago   Up 2 seconds (health: starting)   0.0.0.0:3200->3000/tcp, [::]:3200->3000/tcp   ria-dev
+
+PS> Invoke-RestMethod -Uri http://localhost:3200/api/items -Method Post -ContentType "application/json" -Body (ConvertTo-Json @{ name = "Docker Persistence Test"; category = "Test"; price = 1; quantity = 5; reorder_threshold = 2 })
+{"id":8,"name":"Docker Persistence Test","category":"Test","price":1,"quantity":5,"reorder_threshold":2,"order_status":"NONE","expected_date":null}
+
+PS> docker rm -f ria-dev
+ria-dev
+
+PS> docker run -d --name ria-dev -p 3200:3000 -v ria-data:/app/data retail-inventory-alert:latest
+de2542380866b2ff7b2d0a37c9b2729cdc92472cdf522408923db41510fb4a38
+
+PS> docker ps
+CONTAINER ID   IMAGE                           COMMAND                  CREATED         STATUS                   PORTS                                         NAMES
+de2542380866   retail-inventory-alert:latest   "docker-entrypoint.sΓÇª"   7 seconds ago   Up 6 seconds (healthy)   0.0.0.0:3200->3000/tcp, [::]:3200->3000/tcp   ria-dev
+
+PS> Invoke-RestMethod http://localhost:3200/api/items | Where-Object { $_.name -eq "Docker Persistence Test" }
+{"id":8,"name":"Docker Persistence Test","category":"Test","price":1,"quantity":5,"reorder_threshold":2,"order_status":"NONE","expected_date":null,"stock_status":"IN_STOCK"}
+
+PS> docker stop ria-dev
+ria-dev
+
+PS> docker rm ria-dev
+ria-dev
+
+PS> docker ps -a
+CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
+
+PS> docker volume ls
+DRIVER    VOLUME NAME
+local     ria-data
+
+PS> docker run -d --name ria-dev -p 3200:3000 -v ria-data:/app/data retail-inventory-alert:latest
+b6efff7c9c026915dcd74fdf080e322f72719958e794e6e4fc18a938f5acfa11
+
+PS> docker ps
+CONTAINER ID   IMAGE                           COMMAND                  CREATED         STATUS                   PORTS                                         NAMES
+b6efff7c9c02   retail-inventory-alert:latest   "docker-entrypoint.sΓÇª"   7 seconds ago   Up 6 seconds (healthy)   0.0.0.0:3200->3000/tcp, [::]:3200->3000/tcp   ria-dev
+
