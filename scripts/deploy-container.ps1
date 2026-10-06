@@ -102,9 +102,30 @@ $portPids = @($portPids | Select-Object -Unique | Where-Object { $_ -gt 0 })
 foreach ($portPid in $portPids) {
     Write-Host "  Stopping PID $portPid still bound to port $HostPort so the container can bind..."
     Stop-Process -Id $portPid -Force -ErrorAction SilentlyContinue
+    cmd /c "taskkill /F /PID $portPid /T >nul 2>&1"
 }
 if ($portPids.Count -gt 0) {
     Start-Sleep -Seconds 2
+}
+
+$stillBound = @()
+$netstatAfter = netstat -ano 2>$null
+foreach ($line in $netstatAfter) {
+    if ($line -match "0\.0\.0\.0:${HostPort}\s" -or $line -match "\[::\]:${HostPort}\s") {
+        if ($line -match '\s+(\d+)\s*$') {
+            $stillBound += [int]$Matches[1]
+        }
+    }
+}
+$stillBound = @($stillBound | Select-Object -Unique | Where-Object { $_ -gt 0 })
+if ($stillBound.Count -gt 0) {
+    Write-Host "[ERROR] Port $HostPort is still in use after stop attempts. PIDs: $($stillBound -join ', ')" -ForegroundColor Red
+    Write-Host "  The listener is likely the Task 8 Node process started by another user (for example Jenkins)." -ForegroundColor Yellow
+    Write-Host "  Free the port from an Administrator prompt, then re-run this script:" -ForegroundColor Yellow
+    foreach ($p in $stillBound) {
+        Write-Host "    taskkill /F /PID $p /T" -ForegroundColor Yellow
+    }
+    exit 1
 }
 
 # (d) Run fresh container
@@ -120,9 +141,13 @@ $dockerRunArgs = @(
     '--label', "deploy.build=$BuildNumber",
     $ImageRef
 )
+$previousEap = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 $containerId = (& docker @dockerRunArgs 2>&1 | Out-String).Trim()
+$runExit = $LASTEXITCODE
+$ErrorActionPreference = $previousEap
 
-if ($LASTEXITCODE -ne 0) {
+if ($runExit -ne 0) {
     Write-Host "[ERROR] Failed to start container ${containerName}" -ForegroundColor Red
     Write-Host $containerId -ForegroundColor Yellow
     exit 1
