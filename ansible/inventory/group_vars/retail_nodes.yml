@@ -1,0 +1,20 @@
+---
+app_name: retail-inventory
+app_user: retailapp
+app_group: retailapp
+app_root: /opt/retail-inventory
+app_data_dir: "{{ app_root }}/shared/data"
+app_log_dir: /var/log/retail-inventory
+env_dir: /etc/retail-inventory
+app_port: 3300
+nginx_port: 8300
+node_major: 22
+node_env: production
+base_packages:
+  - nginx
+  - curl
+  - git
+  - ca-certificates
+  - gnupg
+  - build-essential
+  - python3
