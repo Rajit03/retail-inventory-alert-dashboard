@@ -46,22 +46,21 @@ $volumeName = "retail-inventory-$Environment-data"
 
 # (a) Pull image from registry
 Write-Host "`n[1/7] Pulling image from registry: $ImageRef..."
-$pullOut = cmd /c "docker pull $ImageRef 2>&1"
+& docker pull $ImageRef
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Failed to pull image $ImageRef from registry." -ForegroundColor Red
-    Write-Host "$pullOut" -ForegroundColor Yellow
+    Write-Host "[ERROR] Failed to pull image from registry: $ImageRef" -ForegroundColor Red
     exit 1
 }
 Write-Host "  Image pull successful."
 
 # (b) Inspect and remove existing container
 Write-Host "`n[2/7] Checking for existing container '$containerName'..."
-$existingImage = (cmd /c "docker inspect --format ""{{.Config.Image}}"" $containerName 2>nul").Trim()
-if ($existingImage) {
+$existingImage = (& docker inspect --format '{{.Config.Image}}' $containerName 2>$null | Out-String).Trim()
+if ($LASTEXITCODE -eq 0 -and $existingImage) {
     Write-Host "  Previous image: $existingImage"
     Write-Host "  Stopping and removing container '$containerName'..."
-    cmd /c "docker stop $containerName 2>nul" | Out-Null
-    cmd /c "docker rm $containerName 2>nul" | Out-Null
+    & docker stop $containerName 2>$null | Out-Null
+    & docker rm $containerName 2>$null | Out-Null
     Write-Host "  Old container removed."
 } else {
     Write-Host "  No previous container named '$containerName' found."
@@ -77,7 +76,6 @@ if (Test-Path -Path $legacyPidFile) {
             $legacyPid = [int]$legacyPidRaw
             Write-Host "  Found legacy host process PID: $legacyPid. Stopping process..."
             Stop-Process -Id $legacyPid -Force -ErrorAction SilentlyContinue
-            cmd /c "taskkill /F /PID $legacyPid /T 2>nul" | Out-Null
             Write-Host "  Legacy host process stopped."
         }
     } catch {
@@ -89,13 +87,44 @@ if (Test-Path -Path $legacyPidFile) {
     Write-Host "  No legacy pid file at: $legacyPidFile"
 }
 
+# If Task 8 left a Node process without app.pid, free the mapped host port so docker run can bind.
+Write-Host "  Checking whether port $HostPort is still in use..."
+$netstatOut = netstat -ano 2>$null
+$portPids = @()
+foreach ($line in $netstatOut) {
+    if ($line -match "0\.0\.0\.0:${HostPort}\s" -or $line -match "\[::\]:${HostPort}\s") {
+        if ($line -match '\s+(\d+)\s*$') {
+            $portPids += [int]$Matches[1]
+        }
+    }
+}
+$portPids = @($portPids | Select-Object -Unique | Where-Object { $_ -gt 0 })
+foreach ($portPid in $portPids) {
+    Write-Host "  Stopping PID $portPid still bound to port $HostPort so the container can bind..."
+    Stop-Process -Id $portPid -Force -ErrorAction SilentlyContinue
+}
+if ($portPids.Count -gt 0) {
+    Start-Sleep -Seconds 2
+}
+
 # (d) Run fresh container
 Write-Host "`n[4/7] Launching fresh container '$containerName' on host port $HostPort..."
-$dockerRunCmd = "docker run -d --name $containerName --restart unless-stopped -p ${HostPort}:3000 -v ${volumeName}:/app/data -e NODE_ENV=production --label deploy.environment=$Environment --label deploy.build=$BuildNumber $ImageRef"
-$containerId = (cmd /c "$dockerRunCmd 2>&1").Trim()
+$dockerRunArgs = @(
+    'run', '-d',
+    '--name', $containerName,
+    '--restart', 'unless-stopped',
+    '-p', "${HostPort}:3000",
+    '-v', "${volumeName}:/app/data",
+    '-e', 'NODE_ENV=production',
+    '--label', "deploy.environment=$Environment",
+    '--label', "deploy.build=$BuildNumber",
+    $ImageRef
+)
+$containerId = (& docker @dockerRunArgs 2>&1 | Out-String).Trim()
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "[ERROR] Failed to start container $containerName: $containerId" -ForegroundColor Red
+    Write-Host "[ERROR] Failed to start container ${containerName}" -ForegroundColor Red
+    Write-Host $containerId -ForegroundColor Yellow
     exit 1
 }
 Write-Host "  Container started successfully. ID: $containerId"
@@ -112,7 +141,7 @@ while ($elapsed -lt $maxWaitSec) {
     Start-Sleep -Seconds $intervalSec
     $elapsed += $intervalSec
 
-    $dockerHealth = (cmd /c "docker inspect --format ""{{.State.Health.Status}}"" $containerName 2>nul").Trim()
+    $dockerHealth = (& docker inspect --format '{{.State.Health.Status}}' $containerName 2>$null | Out-String).Trim()
     $httpHealthy = $false
 
     try {
@@ -134,9 +163,9 @@ while ($elapsed -lt $maxWaitSec) {
 }
 
 if (-not $isHealthy) {
-    Write-Host "[ERROR] Container $containerName failed health checks within $maxWaitSec seconds." -ForegroundColor Red
-    Write-Host "`n--- Docker Container Logs (last 30 lines) ---" -ForegroundColor Red
-    cmd /c "docker logs --tail 30 $containerName"
+    Write-Host "[ERROR] Container '$containerName' failed health checks within ${maxWaitSec}s." -ForegroundColor Red
+    Write-Host "`n--- Docker Container Logs (last 30 lines) ---" -ForegroundColor Yellow
+    & docker logs --tail 30 $containerName
     exit 1
 }
 
@@ -147,40 +176,39 @@ try {
     $isEmpty = ($null -eq $items) -or ($items.Count -eq 0) -or ($items -is [string] -and $items.Trim() -eq '[]')
     if ($isEmpty) {
         Write-Host "  Database is empty. Seeding initial data with 'npm run seed'..."
-        $seedOut = cmd /c "docker exec $containerName npm run seed 2>&1"
-        Write-Host "$seedOut"
+        & docker exec $containerName npm run seed
         Write-Host "  Database seeded successfully."
     } else {
-        $count = if ($items.Count) { $items.Count } else { "N/A" }
+        $count = if ($items.Count) { $items.Count } else { 'N/A' }
         Write-Host "  Database already contains data ($count items). Skipping seed."
     }
 } catch {
     Write-Host "  Warning: Failed to verify /api/items: $_. Executing seed as precaution..."
-    cmd /c "docker exec $containerName npm run seed 2>&1" | Out-Null
+    & docker exec $containerName npm run seed
 }
 
 # (g) Prune older local images (keep 5 newest)
 Write-Host "`n[7/7] Managing local image retention (keeping 5 newest tags)..."
 try {
-    $repoName = ($ImageRef -split ':')[0]
-    $allImageLines = cmd /c "docker images --format ""{{.Repository}}:{{.Tag}}"" $repoName 2>nul"
-    $validImages = @($allImageLines | Where-Object { $_ -and $_ -notmatch '<none>' -and $_ -notmatch ':latest' })
+    $repoName = 'localhost:5000/retail-inventory-alert'
+    $allImageLines = @(& docker images --format '{{.Repository}}:{{.Tag}}' $repoName 2>$null)
+    $validImages = @($allImageLines | Where-Object { $_ -and $_ -notmatch '<none>' })
 
     if ($validImages.Count -gt 5) {
         $imagesToPrune = $validImages | Select-Object -Skip 5
         foreach ($img in $imagesToPrune) {
             Write-Host "  Pruning old image: $img"
-            cmd /c "docker rmi $img 2>nul" | Out-Null
+            & docker rmi $img 2>$null | Out-Null
         }
     } else {
-        Write-Host "  Total tagged images for $repoName is $($validImages.Count) (<= 5). No pruning required."
+        Write-Host "  Total tagged images for ${repoName}: $($validImages.Count) (<= 5). No pruning required."
     }
 } catch {
     Write-Host "  Image pruning notice: $_"
 }
 
 Write-Host "`nActive Container Status:"
-cmd /c "docker ps --filter name=^/$containerName$ --format ""table {{.Names}}\t{{.Status}}\t{{.Ports}}\t{{.Image}}"""
+& docker ps --filter "name=retail-inventory-$Environment"
 
 Write-Host "=========================================="
 Write-Host " Deployment of $containerName SUCCEEDED!"
