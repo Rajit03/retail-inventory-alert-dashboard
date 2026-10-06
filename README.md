@@ -164,6 +164,12 @@ For full details on image specifications, line-by-line Dockerfile explanations, 
 
 ---
 
+## Ansible configuration
+
+Linux node preparation (packages, `retailapp` user, folders, systemd unit, Nginx on port 8300) is managed with Ansible against the local Ubuntu-Retail WSL instance. See the [Configuration Specification](docs/configuration-specification.md). Application release deployment, idempotency demonstration, health check, and rollback come in Task 14.
+
+---
+
 ## Branching and Commits
 
 We follow a structured branching model (`main`, `develop`, `feature/*`, `bugfix/*`) and conventional commit standards. For complete branching rules, pull request workflows, and commit message conventions, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
