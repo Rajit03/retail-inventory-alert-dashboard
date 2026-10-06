@@ -19,6 +19,7 @@
 - name: Validate Nginx configuration
   ansible.builtin.command: /usr/sbin/nginx -t
   changed_when: false
+  when: not ansible_check_mode
   tags: ['nginx']
 
 - name: Enable and start Nginx
@@ -26,6 +27,7 @@
     name: nginx
     enabled: true
     state: started
+  when: not ansible_check_mode
   tags: ['nginx']
 
 - name: Apply Nginx configuration
