@@ -18,15 +18,15 @@ param(
 )
 
 $Distro = "Ubuntu-Retail"
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$RepoRoot = (Resolve-Path (Join-Path $ScriptDir "..")).Path
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } else { Split-Path -Parent $MyInvocation.MyCommand.Path }
+$RepoRoot = [System.IO.Path]::GetFullPath((Join-Path $ScriptDir ".."))
 
-# Resolve WSL paths
-$WslRepoRoot = (wsl -d $Distro -- wslpath -a -u "$($RepoRoot.Replace('\', '/'))").Trim()
+# Resolve WSL paths dynamically
+$WslRepoRoot = (& wsl.exe -d $Distro -- wslpath -a -u "$($RepoRoot.Replace('\', '/'))" 2>$null).Trim()
 $WslAnsibleDir = "$WslRepoRoot/ansible"
 
 # Query Ansible version
-$AnsibleVersion = (wsl -d $Distro -- bash -lc "ansible --version | head -n 1").Trim()
+$AnsibleVersion = (& wsl.exe -d $Distro -- bash -lc "ansible --version | head -n 1" 2>$null).Trim()
 $CurrentDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
 $PlaybookCmd = ""
@@ -43,7 +43,10 @@ switch ($Action) {
             Write-Host "Creating package with npm pack in $RepoRoot..."
             Push-Location $RepoRoot
             try {
-                npm pack
+                & npm.cmd pack
+                if ($LASTEXITCODE -ne 0) {
+                    npm pack
+                }
             } finally {
                 Pop-Location
             }
@@ -53,9 +56,13 @@ switch ($Action) {
                 exit 1
             }
             $PackagePath = $NewestTgz.FullName
+        } else {
+            if (-not [System.IO.Path]::IsPathRooted($PackagePath)) {
+                $PackagePath = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $PackagePath))
+            }
         }
 
-        $WslPackagePath = (wsl -d $Distro -- wslpath -a -u "$($PackagePath.Replace('\', '/'))").Trim()
+        $WslPackagePath = (& wsl.exe -d $Distro -- wslpath -a -u "$($PackagePath.Replace('\', '/'))" 2>$null).Trim()
 
         if (-not $ReleaseId) {
             $ReleaseId = "rel-$(Get-Date -Format 'yyyyMMddHHmmss')"
@@ -75,13 +82,13 @@ switch ($Action) {
     }
 }
 
-$FullWslCommand = "cd $WslAnsibleDir && export ANSIBLE_CONFIG=$WslAnsibleDir/ansible.cfg && $PlaybookCmd"
+$FullWslCommand = "cd '$WslAnsibleDir' && export ANSIBLE_CONFIG='$WslAnsibleDir/ansible.cfg' && $PlaybookCmd"
 $HeaderLine = "$CurrentDate action=$Action command=$PlaybookCmd ansible=$AnsibleVersion"
 
 if ($LogFile) {
     $ResolvedLogPath = $LogFile
     if (-not [System.IO.Path]::IsPathRooted($LogFile)) {
-        $ResolvedLogPath = Join-Path $RepoRoot $LogFile
+        $ResolvedLogPath = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $LogFile))
     }
     $LogDir = [System.IO.Path]::GetDirectoryName($ResolvedLogPath)
     if ($LogDir -and -not (Test-Path $LogDir)) {
