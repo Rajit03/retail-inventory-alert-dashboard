@@ -1,0 +1,101 @@
+2026-10-06T10:56:34+00:00 command=ansible-playbook site.yml ansible=ansible [core 2.20.1]
+
+PLAY [Prepare Linux node for Retail Inventory Alert Dashboard] *****************
+
+TASK [Gathering Facts] *********************************************************
+ok: [retail-node]
+
+TASK [common : Update apt cache] ***********************************************
+ok: [retail-node]
+
+TASK [common : Install base packages] ******************************************
+changed: [retail-node]
+
+TASK [common : Create application group] ***************************************
+changed: [retail-node]
+
+TASK [common : Create application system user] *********************************
+changed: [retail-node]
+
+TASK [common : Create application directories] *********************************
+changed: [retail-node] => (item={'path': '/opt/retail-inventory', 'owner': 'retailapp', 'group': 'retailapp', 'mode': '0755'})
+changed: [retail-node] => (item={'path': '/opt/retail-inventory/releases', 'owner': 'retailapp', 'group': 'retailapp', 'mode': '0755'})
+changed: [retail-node] => (item={'path': '/opt/retail-inventory/shared', 'owner': 'retailapp', 'group': 'retailapp', 'mode': '0750'})
+changed: [retail-node] => (item={'path': '/opt/retail-inventory/shared/data', 'owner': 'retailapp', 'group': 'retailapp', 'mode': '0750'})
+changed: [retail-node] => (item={'path': '/var/log/retail-inventory', 'owner': 'retailapp', 'group': 'retailapp', 'mode': '0750'})
+changed: [retail-node] => (item={'path': '/etc/retail-inventory', 'owner': 'root', 'group': 'retailapp', 'mode': '0750'})
+
+TASK [nodejs : Ensure apt keyrings directory exists] ***************************
+ok: [retail-node]
+
+TASK [nodejs : Download NodeSource GPG key] ************************************
+changed: [retail-node]
+
+TASK [nodejs : Add NodeSource apt repository] **********************************
+changed: [retail-node]
+
+TASK [nodejs : Install Node.js from NodeSource] ********************************
+changed: [retail-node]
+
+TASK [nodejs : Assert node -v reports the configured major version] ************
+ok: [retail-node]
+
+TASK [app_service : Install application environment file] **********************
+changed: [retail-node]
+
+TASK [app_service : Install systemd unit] **************************************
+changed: [retail-node]
+
+TASK [app_service : Apply systemd unit changes] ********************************
+
+RUNNING HANDLER [app_service : daemon-reload] **********************************
+ok: [retail-node]
+
+TASK [app_service : Enable retail-inventory service] ***************************
+changed: [retail-node]
+
+TASK [app_service : Check whether an application release exists] ***************
+ok: [retail-node]
+
+TASK [app_service : Start retail-inventory when a release exists] **************
+skipping: [retail-node]
+
+TASK [app_service : Skip start until the first release is deployed] ************
+ok: [retail-node] => {
+    "msg": "Service retail-inventory is enabled but not started; it will start after the first release is deployed (/opt/retail-inventory/current/src/server.js is missing)."
+}
+
+TASK [nginx : Install Nginx reverse-proxy site] ********************************
+changed: [retail-node]
+
+TASK [nginx : Remove default Nginx site] ***************************************
+changed: [retail-node]
+
+TASK [nginx : Validate Nginx configuration] ************************************
+ok: [retail-node]
+
+TASK [nginx : Enable and start Nginx] ******************************************
+ok: [retail-node]
+
+TASK [nginx : Apply Nginx configuration] ***************************************
+
+RUNNING HANDLER [nginx : reload nginx] *****************************************
+changed: [retail-node]
+
+TASK [Wait until Nginx is listening on the public port] ************************
+ok: [retail-node]
+
+TASK [Confirm Nginx health location returns HTTP 200] **************************
+ok: [retail-node]
+
+TASK [Collect service facts for the summary] ***********************************
+ok: [retail-node]
+
+TASK [Print node preparation summary] ******************************************
+ok: [retail-node] => {
+    "msg": "user=retailapp group=retailapp\nfolders=/opt/retail-inventory /opt/retail-inventory/releases /opt/retail-inventory/shared/data /var/log/retail-inventory /etc/retail-inventory\nports app=3300 nginx=8300\nnginx=running enabled=enabled\nretail-inventory=stopped enabled=enabled\nnginx_health=200\n"
+}
+
+PLAY RECAP *********************************************************************
+retail-node                : ok=26   changed=13   unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+

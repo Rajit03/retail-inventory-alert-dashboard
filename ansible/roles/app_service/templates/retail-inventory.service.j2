@@ -1,0 +1,19 @@
+[Unit]
+Description=Retail Inventory Alert Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User={{ app_user }}
+Group={{ app_group }}
+WorkingDirectory={{ app_root }}/current
+EnvironmentFile={{ env_dir }}/{{ app_name }}.env
+ExecStart=/usr/bin/node src/server.js
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:{{ app_log_dir }}/app.log
+StandardError=append:{{ app_log_dir }}/err.log
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
