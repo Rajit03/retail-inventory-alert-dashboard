@@ -40,7 +40,7 @@ switch ($Action) {
     }
     'deploy' {
         if (-not $PackagePath) {
-            Write-Host "Creating package with npm pack..."
+            Write-Host "Creating package with npm pack in $RepoRoot..."
             Push-Location $RepoRoot
             try {
                 npm pack
@@ -93,44 +93,15 @@ if ($LogFile) {
 Write-Host $HeaderLine
 Write-Host "Executing in WSL ($Distro): $FullWslCommand"
 
-$ProcessInfo = New-Object System.Diagnostics.ProcessStartInfo
-$ProcessInfo.FileName = "wsl.exe"
-$ProcessInfo.Arguments = "-d $Distro -- bash -lc `"$FullWslCommand`""
-$ProcessInfo.RedirectStandardOutput = $true
-$ProcessInfo.RedirectStandardError = $true
-$ProcessInfo.UseShellExecute = $false
-$ProcessInfo.CreateNoWindow = $true
+if ($LogFile) {
+    & wsl.exe -d $Distro -- bash -lc "$FullWslCommand" 2>&1 | Tee-Object -FilePath $ResolvedLogPath -Append
+    $ExitCode = $LASTEXITCODE
+} else {
+    & wsl.exe -d $Distro -- bash -lc "$FullWslCommand"
+    $ExitCode = $LASTEXITCODE
+}
 
-$Process = New-Object System.Diagnostics.Process
-$Process.StartInfo = $ProcessInfo
-
-$Process.add_OutputDataReceived({
-    param($sender, $e)
-    if ($null -ne $e.Data) {
-        [Console]::Out.WriteLine($e.Data)
-        if ($LogFile) {
-            [System.IO.File]::AppendAllText($ResolvedLogPath, $e.Data + "`n", [System.Text.Encoding]::UTF8)
-        }
-    }
-})
-
-$Process.add_ErrorDataReceived({
-    param($sender, $e)
-    if ($null -ne $e.Data) {
-        [Console]::Error.WriteLine($e.Data)
-        if ($LogFile) {
-            [System.IO.File]::AppendAllText($ResolvedLogPath, $e.Data + "`n", [System.Text.Encoding]::UTF8)
-        }
-    }
-})
-
-$Process.Start() | Out-Null
-$Process.BeginOutputReadLine()
-$Process.BeginErrorReadLine()
-$Process.WaitForExit()
-
-$ExitCode = $Process.ExitCode
 if ($ExitCode -ne 0) {
-    Write-Warning "Playbook execution failed with exit code $ExitCode"
+    Write-Warning "Playbook execution completed with non-zero exit code: $ExitCode"
 }
 exit $ExitCode
