@@ -1,0 +1,131 @@
+---
+- name: Rollback Retail Inventory release
+  hosts: retail_nodes
+  become: true
+  tasks:
+    - name: Inspect previous release symlink
+      ansible.builtin.stat:
+        path: "{{ app_root }}/previous"
+        follow: false
+      register: prev_symlink_stat
+
+    - name: Resolve target release when explicitly provided
+      ansible.builtin.set_fact:
+        resolved_release_path: "{{ app_root }}/releases/{{ target_release }}"
+        resolved_release_id: "{{ target_release }}"
+      when:
+        - target_release is defined
+        - target_release | length > 0
+
+    - name: Resolve target release from previous symlink
+      ansible.builtin.set_fact:
+        resolved_release_path: "{{ prev_symlink_stat.stat.lnk_target }}"
+        resolved_release_id: "{{ prev_symlink_stat.stat.lnk_target | basename }}"
+      when:
+        - target_release is not defined or (target_release | length == 0)
+        - prev_symlink_stat.stat.exists | default(false)
+        - prev_symlink_stat.stat.islnk | default(false)
+
+    - name: Assert target release could be resolved
+      ansible.builtin.assert:
+        that:
+          - resolved_release_path is defined
+          - resolved_release_path | length > 0
+        fail_msg: "Rollback aborted: No target_release was specified and {{ app_root }}/previous symlink does not exist."
+
+    - name: Verify target release directory exists
+      ansible.builtin.stat:
+        path: "{{ resolved_release_path }}"
+      register: target_stat
+
+    - name: Assert target release directory exists
+      ansible.builtin.assert:
+        that:
+          - target_stat.stat.exists
+          - target_stat.stat.isdir
+        fail_msg: "Target release directory {{ resolved_release_path }} does not exist."
+
+    - name: Check whether target release was marked failed
+      ansible.builtin.stat:
+        path: "{{ resolved_release_path }}/.failed"
+      register: failed_marker_stat
+
+    - name: Assert target release is not marked as failed
+      ansible.builtin.assert:
+        that:
+          - not failed_marker_stat.stat.exists
+        fail_msg: "Cannot roll back to release {{ resolved_release_id }}: it is marked as failed (.failed flag present)."
+
+    - name: Point current symlink to rollback target release
+      ansible.builtin.file:
+        src: "{{ resolved_release_path }}"
+        dest: "{{ app_root }}/current"
+        state: link
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        force: true
+
+    - name: Restart application service on rollback release
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: restarted
+
+    - name: Health check direct application endpoint
+      ansible.builtin.uri:
+        url: "{{ health_app_url }}"
+        status_code: 200
+        return_content: true
+      register: app_health_resp
+      until:
+        - app_health_resp.status is defined
+        - app_health_resp.status == 200
+        - app_health_resp.json is defined
+        - app_health_resp.json.status == "UP"
+      retries: "{{ health_retries }}"
+      delay: "{{ health_delay }}"
+
+    - name: Health check Nginx reverse proxy endpoint
+      ansible.builtin.uri:
+        url: "{{ health_proxy_url }}"
+        status_code: 200
+        return_content: true
+      register: proxy_health_resp
+      until:
+        - proxy_health_resp.status is defined
+        - proxy_health_resp.status == 200
+        - proxy_health_resp.json is defined
+        - proxy_health_resp.json.status == "UP"
+      retries: "{{ health_retries }}"
+      delay: "{{ health_delay }}"
+
+    - name: Update stable symlink to rollback target release
+      ansible.builtin.file:
+        src: "{{ resolved_release_path }}"
+        dest: "{{ app_root }}/stable"
+        state: link
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        force: true
+
+    - name: Read final symlink status after rollback
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+        follow: false
+      loop:
+        - { name: 'previous', path: "{{ app_root }}/previous" }
+        - { name: 'stable', path: "{{ app_root }}/stable" }
+        - { name: 'current', path: "{{ app_root }}/current" }
+      register: final_rollback_symlinks
+
+    - name: Print manual rollback summary
+      ansible.builtin.debug:
+        msg: |
+          ==================================================
+          MANUAL ROLLBACK COMPLETED SUCCESSFULLY
+          --------------------------------------------------
+          Rolled back to : {{ resolved_release_id }}
+          Previous Target: {{ (final_rollback_symlinks.results[0].stat.lnk_target | default('none')) | basename }}
+          Stable Target  : {{ (final_rollback_symlinks.results[1].stat.lnk_target | default('none')) | basename }}
+          Current Target : {{ (final_rollback_symlinks.results[2].stat.lnk_target | default('none')) | basename }}
+          Health Status  : PASS
+          ==================================================
