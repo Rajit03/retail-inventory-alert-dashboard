@@ -1,0 +1,12 @@
+---
+- name: restart retail-inventory
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    state: restarted
+  when: not ansible_check_mode
+
+- name: reload retail-inventory
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    state: reloaded
+  when: not ansible_check_mode

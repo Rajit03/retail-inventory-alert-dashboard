@@ -1,0 +1,305 @@
+---
+- name: Validate required deploy parameters
+  ansible.builtin.assert:
+    that:
+      - release_id is defined
+      - release_id | length > 0
+      - release_package is defined
+      - release_package | length > 0
+    fail_msg: "Both release_id and release_package variables must be defined."
+  tags: ['release']
+
+- name: Assert release package exists on target node
+  ansible.builtin.stat:
+    path: "{{ release_package }}"
+  register: pkg_stat
+  tags: ['release']
+
+- name: Fail if release package is missing
+  ansible.builtin.fail:
+    msg: "Release package file not found at {{ release_package }}."
+  when: not pkg_stat.stat.exists
+  tags: ['release']
+
+- name: Inspect current stable release before deployment
+  ansible.builtin.stat:
+    path: "{{ app_root }}/stable"
+    follow: false
+  register: initial_stable_stat
+  tags: ['release']
+
+- name: Set facts for pre-existing stable release
+  ansible.builtin.set_fact:
+    old_stable_path: "{{ initial_stable_stat.stat.lnk_target | default('') }}"
+    old_stable_exists: "{{ initial_stable_stat.stat.exists | default(false) and initial_stable_stat.stat.islnk | default(false) }}"
+  tags: ['release']
+
+- name: Deploy release with automated verification and rollback
+  block:
+    - name: Ensure release directory exists
+      ansible.builtin.file:
+        path: "{{ app_root }}/releases/{{ release_id }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+
+    - name: Ensure npm cache directory exists
+      ansible.builtin.file:
+        path: "{{ npm_cache_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+
+    - name: Check if release package is already extracted
+      ansible.builtin.stat:
+        path: "{{ app_root }}/releases/{{ release_id }}/package.json"
+      register: release_pkg_stat
+
+    - name: Extract application package into release directory
+      ansible.builtin.unarchive:
+        src: "{{ release_package }}"
+        dest: "{{ app_root }}/releases/{{ release_id }}"
+        remote_src: true
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        extra_opts:
+          - --strip-components=1
+      when: not release_pkg_stat.stat.exists
+
+    - name: Install production dependencies
+      ansible.builtin.command:
+        cmd: npm ci --omit=dev
+        chdir: "{{ app_root }}/releases/{{ release_id }}"
+        creates: "{{ app_root }}/releases/{{ release_id }}/node_modules"
+      become_user: "{{ app_user }}"
+      environment:
+        npm_config_cache: "{{ npm_cache_dir }}"
+
+    - name: Check if SQLite database exists
+      ansible.builtin.stat:
+        path: "{{ app_data_dir }}/inventory.db"
+      register: db_file_stat
+
+    - name: Seed database with initial inventory
+      ansible.builtin.command:
+        cmd: npm run seed
+        chdir: "{{ app_root }}/releases/{{ release_id }}"
+      become_user: "{{ app_user }}"
+      environment:
+        NODE_ENV: "{{ node_env }}"
+        PORT: "{{ app_port }}"
+        DB_PATH: "{{ app_data_dir }}/inventory.db"
+        npm_config_cache: "{{ npm_cache_dir }}"
+      when: not db_file_stat.stat.exists
+
+    - name: Check current active release symlink
+      ansible.builtin.stat:
+        path: "{{ app_root }}/current"
+        follow: false
+      register: current_symlink_stat
+
+    - name: Determine if current symlink requires update
+      ansible.builtin.set_fact:
+        symlink_needs_update: "{{ not (current_symlink_stat.stat.exists | default(false) and current_symlink_stat.stat.islnk | default(false) and current_symlink_stat.stat.lnk_target == app_root ~ '/releases/' ~ release_id) }}"
+
+    - name: Point current symlink to new release
+      ansible.builtin.file:
+        src: "{{ app_root }}/releases/{{ release_id }}"
+        dest: "{{ app_root }}/current"
+        state: link
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        force: true
+
+    - name: Restart application service for new release
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: restarted
+      when:
+        - symlink_needs_update
+        - not ansible_check_mode
+
+    - name: Ensure application service is running
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: started
+      when: not ansible_check_mode
+
+    - name: Health check direct application endpoint
+      ansible.builtin.uri:
+        url: "{{ health_app_url }}"
+        status_code: 200
+        return_content: true
+      register: app_health_resp
+      until:
+        - app_health_resp.status is defined
+        - app_health_resp.status == 200
+        - app_health_resp.json is defined
+        - app_health_resp.json.status == "UP"
+      retries: "{{ health_retries }}"
+      delay: "{{ health_delay }}"
+      when: not ansible_check_mode
+
+    - name: Health check Nginx reverse proxy endpoint
+      ansible.builtin.uri:
+        url: "{{ health_proxy_url }}"
+        status_code: 200
+        return_content: true
+      register: proxy_health_resp
+      until:
+        - proxy_health_resp.status is defined
+        - proxy_health_resp.status == 200
+        - proxy_health_resp.json is defined
+        - proxy_health_resp.json.status == "UP"
+      retries: "{{ health_retries }}"
+      delay: "{{ health_delay }}"
+      when: not ansible_check_mode
+
+    - name: Update previous symlink to old stable release
+      ansible.builtin.file:
+        src: "{{ old_stable_path }}"
+        dest: "{{ app_root }}/previous"
+        state: link
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        force: true
+      when:
+        - old_stable_exists
+        - old_stable_path != (app_root ~ '/releases/' ~ release_id)
+
+    - name: Update stable symlink to verified release
+      ansible.builtin.file:
+        src: "{{ app_root }}/releases/{{ release_id }}"
+        dest: "{{ app_root }}/stable"
+        state: link
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        force: true
+
+    - name: Prune old releases keeping newest releases
+      block:
+        - name: Check protected symlinks
+          ansible.builtin.stat:
+            path: "{{ item }}"
+            follow: false
+          loop:
+            - "{{ app_root }}/current"
+            - "{{ app_root }}/stable"
+            - "{{ app_root }}/previous"
+          register: protected_links
+
+        - name: Collect paths protected by symlinks
+          ansible.builtin.set_fact:
+            protected_paths: "{{ protected_links.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | selectattr('stat.islnk', 'defined') | selectattr('stat.islnk') | map(attribute='stat.lnk_target') | list | unique }}"
+
+        - name: Find all releases
+          ansible.builtin.find:
+            paths: "{{ app_root }}/releases"
+            file_type: directory
+            recurse: false
+          register: all_releases
+
+        - name: Filter releases to prune
+          ansible.builtin.set_fact:
+            releases_sorted: "{{ all_releases.files | sort(attribute='mtime', reverse=true) | map(attribute='path') | list }}"
+
+        - name: Determine releases eligible for removal
+          ansible.builtin.set_fact:
+            releases_to_delete: "{{ releases_sorted[releases_keep | int:] | difference(protected_paths) }}"
+
+        - name: Remove pruned releases
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop: "{{ releases_to_delete }}"
+
+  rescue:
+    - name: Mark failed release with .failed flag
+      ansible.builtin.file:
+        path: "{{ app_root }}/releases/{{ release_id }}/.failed"
+        state: touch
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0644"
+
+    - name: Execute automatic rollback to last stable release
+      block:
+        - name: Verify stable release exists for rollback
+          ansible.builtin.assert:
+            that:
+              - old_stable_exists
+              - old_stable_path | length > 0
+            fail_msg: "Deployment failed and no stable release exists to roll back to."
+
+        - name: Point current symlink back to stable release
+          ansible.builtin.file:
+            src: "{{ old_stable_path }}"
+            dest: "{{ app_root }}/current"
+            state: link
+            owner: "{{ app_user }}"
+            group: "{{ app_group }}"
+            force: true
+
+        - name: Restart application service on stable release
+          ansible.builtin.systemd:
+            name: "{{ app_name }}"
+            state: restarted
+
+        - name: Verify health check on restored stable release
+          ansible.builtin.uri:
+            url: "{{ health_proxy_url }}"
+            status_code: 200
+            return_content: true
+          register: rollback_health
+          until:
+            - rollback_health.status is defined
+            - rollback_health.status == 200
+            - rollback_health.json is defined
+            - rollback_health.json.status == "UP"
+          retries: "{{ health_retries }}"
+          delay: "{{ health_delay }}"
+
+        - name: Log automatic rollback success
+          ansible.builtin.debug:
+            msg: "AUTOMATIC ROLLBACK SUCCESS: Release {{ release_id }} failed health checks. Successfully rolled back current to stable release ({{ old_stable_path }})."
+
+      rescue:
+        - name: Log critical automatic rollback failure
+          ansible.builtin.debug:
+            msg: "CRITICAL: Automatic rollback to {{ old_stable_path | default('none') }} failed."
+
+    - name: Fail deployment play
+      ansible.builtin.fail:
+        msg: "Deployment of release {{ release_id }} failed health checks. Automatic rollback executed."
+
+  always:
+    - name: Read final symlink states
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+        follow: false
+      loop:
+        - { name: 'previous', path: "{{ app_root }}/previous" }
+        - { name: 'stable', path: "{{ app_root }}/stable" }
+        - { name: 'current', path: "{{ app_root }}/current" }
+      register: final_symlinks
+
+    - name: Set deployment summary facts
+      ansible.builtin.set_fact:
+        summary_prev: "{{ (final_symlinks.results[0].stat.lnk_target | default('none')) | basename }}"
+        summary_stable: "{{ (final_symlinks.results[1].stat.lnk_target | default('none')) | basename }}"
+        summary_curr: "{{ (final_symlinks.results[2].stat.lnk_target | default('none')) | basename }}"
+
+    - name: Print deployment summary
+      ansible.builtin.debug:
+        msg: |
+          ==================================================
+          DEPLOYMENT SUMMARY
+          --------------------------------------------------
+          Target Release : {{ release_id }}
+          Previous Target: {{ summary_prev }}
+          Stable Target  : {{ summary_stable }}
+          Current Target : {{ summary_curr }}
+          ==================================================
+  tags: ['release']
