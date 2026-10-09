@@ -1,3 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 ansible/** text eol=lf
+scripts/** text eol=lf
+

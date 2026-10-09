@@ -10,6 +10,13 @@ app_port: 3300
 nginx_port: 8300
 node_major: 22
 node_env: production
+releases_keep: 3
+health_retries: 15
+health_delay: 2
+health_app_url: "http://127.0.0.1:{{ app_port }}/health"
+health_proxy_url: "http://127.0.0.1:{{ nginx_port }}/health"
+health_items_url: "http://127.0.0.1:{{ nginx_port }}/api/items"
+npm_cache_dir: "{{ app_root }}/.npm"
 base_packages:
   - nginx
   - curl
@@ -18,3 +25,5 @@ base_packages:
   - gnupg
   - build-essential
   - python3
+  - acl
+
