@@ -68,9 +68,14 @@
           - --strip-components=1
       when: not release_pkg_stat.stat.exists
 
+    - name: Check if package-lock.json exists in release directory
+      ansible.builtin.stat:
+        path: "{{ app_root }}/releases/{{ release_id }}/package-lock.json"
+      register: release_lockfile_stat
+
     - name: Install production dependencies
       ansible.builtin.command:
-        cmd: npm ci --omit=dev
+        cmd: "{{ 'npm ci --omit=dev' if release_lockfile_stat.stat.exists else 'npm install --omit=dev --no-audit --no-fund' }}"
         chdir: "{{ app_root }}/releases/{{ release_id }}"
         creates: "{{ app_root }}/releases/{{ release_id }}/node_modules"
       become_user: "{{ app_user }}"
@@ -226,13 +231,6 @@
 
     - name: Execute automatic rollback to last stable release
       block:
-        - name: Verify stable release exists for rollback
-          ansible.builtin.assert:
-            that:
-              - old_stable_exists
-              - old_stable_path | length > 0
-            fail_msg: "Deployment failed and no stable release exists to roll back to."
-
         - name: Point current symlink back to stable release
           ansible.builtin.file:
             src: "{{ old_stable_path }}"
@@ -264,11 +262,14 @@
         - name: Log automatic rollback success
           ansible.builtin.debug:
             msg: "AUTOMATIC ROLLBACK SUCCESS: Release {{ release_id }} failed health checks. Successfully rolled back current to stable release ({{ old_stable_path }})."
+      when:
+        - old_stable_exists
+        - old_stable_path | length > 0
 
-      rescue:
-        - name: Log critical automatic rollback failure
-          ansible.builtin.debug:
-            msg: "CRITICAL: Automatic rollback to {{ old_stable_path | default('none') }} failed."
+    - name: Handle deployment failure when no stable release exists
+      ansible.builtin.debug:
+        msg: "Initial deployment of release {{ release_id }} failed; no previous stable release exists to roll back to."
+      when: not old_stable_exists
 
     - name: Fail deployment play
       ansible.builtin.fail:
