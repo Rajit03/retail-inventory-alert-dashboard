@@ -166,7 +166,23 @@ For full details on image specifications, line-by-line Dockerfile explanations, 
 
 ## Ansible configuration
 
-Linux node preparation (packages, `retailapp` user, folders, systemd unit, Nginx on port 8300) is managed with Ansible against the local Ubuntu-Retail WSL instance. See the [Configuration Specification](docs/configuration-specification.md). Application release deployment, idempotency demonstration, health check, and rollback come in Task 14.
+Linux node preparation (packages, `retailapp` user, folders, systemd unit, Nginx on port 8300) is managed with Ansible against the local Ubuntu-Retail WSL instance. See the [Configuration Specification](docs/configuration-specification.md).
+
+---
+
+## Provisioning, deployment and rollback
+
+Target node provisioning, atomic zero-downtime release deployments, automated health checking, idempotency verification, and automatic/manual rollback workflows are managed through Ansible playbooks and the `scripts/node-ops.ps1` helper.
+
+### Quick Operations (PowerShell)
+- **Provision Target Node**: `powershell -File scripts/node-ops.ps1 -Action provision`
+- **Deploy Release**: `powershell -File scripts/node-ops.ps1 -Action deploy -ReleaseId r1`
+- **Run Health Check**: `powershell -File scripts/node-ops.ps1 -Action healthcheck`
+- **Rollback to Previous Stable**: `powershell -File scripts/node-ops.ps1 -Action rollback`
+- **Guarded Teardown**: `powershell -File scripts/node-ops.ps1 -Action teardown`
+
+For full details on the symlink pointer architecture, fault injection demonstration, recovery verification, and complete execution matrix, refer to the [Reliability Validation Guide](docs/reliability-validation.md) and [Task 14 Demonstration Summary](docs/task14/summary.md).
+
 
 ---
 
