@@ -1,0 +1,7 @@
+---
+- name: Deploy application release to retail nodes
+  hosts: retail_nodes
+  become: true
+  roles:
+    - role: release
+      tags: ['release']
