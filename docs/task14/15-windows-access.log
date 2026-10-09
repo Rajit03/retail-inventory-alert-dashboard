@@ -1,0 +1,10 @@
+=== Windows Access Verification ===
+Target URI Base: http://172.22.235.151:8300 (WSL IP: 172.22.235.151)
+
+GET http://172.22.235.151:8300/health -> Status: 200
+Response: {"status":"UP"}
+
+GET http://172.22.235.151:8300/items -> Status: 200
+Content-Type: text/html; charset=utf-8
+Body length: 9629 bytes
+Items Dashboard Title Found: True
