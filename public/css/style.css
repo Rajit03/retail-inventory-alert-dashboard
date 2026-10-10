@@ -57,6 +57,20 @@ body {
   gap: 0.5rem;
 }
 
+.badge-devops {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  color: #ffffff;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+  vertical-align: middle;
+}
+
 .nav-links {
   display: flex;
   gap: 1rem;
