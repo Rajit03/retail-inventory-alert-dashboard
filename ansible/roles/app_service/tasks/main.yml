@@ -1,0 +1,52 @@
+---
+- name: Install application environment file
+  ansible.builtin.template:
+    src: retail-inventory.env.j2
+    dest: "{{ env_dir }}/{{ app_name }}.env"
+    owner: root
+    group: "{{ app_group }}"
+    mode: "0640"
+  tags: ['app_service']
+
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: retail-inventory.service.j2
+    dest: /etc/systemd/system/{{ app_name }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: daemon-reload
+  tags: ['app_service']
+
+- name: Apply systemd unit changes
+  ansible.builtin.meta: flush_handlers
+  tags: ['app_service']
+
+- name: Enable retail-inventory service
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    enabled: true
+    daemon_reload: true
+  when: not ansible_check_mode
+  tags: ['app_service']
+
+- name: Check whether an application release exists
+  ansible.builtin.stat:
+    path: "{{ app_root }}/current/src/server.js"
+  register: app_release
+  tags: ['app_service']
+
+- name: Start retail-inventory when a release exists
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    state: started
+  when:
+    - not ansible_check_mode
+    - app_release.stat.exists
+  tags: ['app_service']
+
+- name: Skip start until the first release is deployed
+  ansible.builtin.debug:
+    msg: "Service {{ app_name }} is enabled but not started; it will start after the first release is deployed ({{ app_root }}/current/src/server.js is missing)."
+  when: not app_release.stat.exists
+  tags: ['app_service']

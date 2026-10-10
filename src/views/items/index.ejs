@@ -1,0 +1,114 @@
+<%- include('../partials/header', { title: 'Catalogue' }) %>
+
+<div class="page-header">
+  <h1 class="page-title">Item Catalogue</h1>
+  <a href="/items/new" class="btn btn-primary">+ Add New Item</a>
+</div>
+
+<div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+  <form action="/items" method="GET" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+    <div style="flex: 2; min-width: 200px;">
+      <label for="search" class="form-label">Search Item</label>
+      <input 
+        type="text" 
+        id="search" 
+        name="search" 
+        data-testid="search-input"
+        class="form-control" 
+        placeholder="Search by item name..." 
+        value="<%= typeof search !== 'undefined' ? search : '' %>"
+      >
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label for="category" class="form-label">Category</label>
+      <select id="category" name="category" data-testid="category-select" class="form-control">
+        <option value="">All Categories</option>
+        <% if (typeof categories !== 'undefined') { %>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat %>" <%= (typeof category !== 'undefined' && category === cat) ? 'selected' : '' %>><%= cat %></option>
+          <% }) %>
+        <% } %>
+      </select>
+    </div>
+
+    <div style="flex: 1; min-width: 150px;">
+      <label for="status" class="form-label">Stock Status</label>
+      <select id="status" name="status" data-testid="status-select" class="form-control">
+        <option value="">All Statuses</option>
+        <option value="IN_STOCK" <%= (typeof status !== 'undefined' && status === 'IN_STOCK') ? 'selected' : '' %>>In Stock</option>
+        <option value="LOW_STOCK" <%= (typeof status !== 'undefined' && status === 'LOW_STOCK') ? 'selected' : '' %>>Low Stock</option>
+        <option value="OUT_OF_STOCK" <%= (typeof status !== 'undefined' && status === 'OUT_OF_STOCK') ? 'selected' : '' %>>Out of Stock</option>
+      </select>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem;">
+      <button type="submit" class="btn btn-primary" data-testid="filter-button">Filter</button>
+      <a href="/items" class="btn btn-secondary" data-testid="reset-filter-button">Reset</a>
+    </div>
+  </form>
+</div>
+
+<% if (items && items.length > 0) { %>
+  <div class="card">
+    <div class="table-responsive">
+      <table class="data-table" data-testid="items-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Quantity</th>
+            <th>Reorder Threshold</th>
+            <th>Stock Status</th>
+            <th>Order Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% items.forEach(item => { %>
+            <tr data-testid="item-row">
+              <td><strong data-testid="item-name"><%= item.name %></strong></td>
+              <td><span class="badge" data-testid="item-category"><%= item.category %></span></td>
+              <td>$<%= Number(item.price).toFixed(2) %></td>
+              <td data-testid="item-quantity"><%= item.quantity %></td>
+              <td><%= item.reorder_threshold %></td>
+              <td data-testid="item-stock-status">
+                <% if (item.stock_status === 'OUT_OF_STOCK') { %>
+                  <span class="badge" style="background-color: #fee2e2; color: #b91c1c;">OUT OF STOCK</span>
+                <% } else if (item.stock_status === 'LOW_STOCK') { %>
+                  <span class="badge" style="background-color: #fef3c7; color: #b45309;">LOW STOCK</span>
+                <% } else { %>
+                  <span class="badge" style="background-color: #dcfce7; color: #15803d;">IN STOCK</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (item.order_status === 'ORDERED') { %>
+                  <span class="badge" style="background-color: #fef3c7; color: #b45309;">ORDERED (<%= item.expected_date || 'Pending' %>)</span>
+                <% } else if (item.order_status === 'RECEIVED') { %>
+                  <span class="badge" style="background-color: #dcfce7; color: #15803d;">RECEIVED</span>
+                <% } else { %>
+                  <span class="badge" style="background-color: #f1f5f9; color: #64748b;">NONE</span>
+                <% } %>
+              </td>
+              <td>
+                <a href="/items/<%= item.id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% } else { %>
+  <div class="card no-items-card">
+    <p data-testid="no-items-message">No items found.</p>
+    <% if ((typeof search !== 'undefined' && search) || (typeof category !== 'undefined' && category) || (typeof status !== 'undefined' && status)) { %>
+      <a href="/items" class="btn btn-secondary">Clear filters</a>
+    <% } else { %>
+      <a href="/items/new" class="btn btn-primary">Add your first item</a>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('../partials/footer') %>

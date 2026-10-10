@@ -1,0 +1,45 @@
+---
+- name: Prepare Linux node for Retail Inventory Alert Dashboard
+  hosts: retail_nodes
+  become: true
+  roles:
+    - role: common
+      tags: ['common']
+    - role: nodejs
+      tags: ['nodejs']
+    - role: app_service
+      tags: ['app_service']
+    - role: nginx
+      tags: ['nginx']
+  post_tasks:
+    - name: Wait until Nginx is listening on the public port
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ nginx_port }}"
+        timeout: 30
+      when: not ansible_check_mode
+      tags: ['nginx']
+
+    - name: Confirm Nginx health location returns HTTP 200
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ nginx_port }}/nginx-health"
+        status_code: 200
+        return_content: true
+      register: nginx_health
+      when: not ansible_check_mode
+      tags: ['nginx']
+
+    - name: Collect service facts for the summary
+      ansible.builtin.service_facts:
+      tags: ['always']
+
+    - name: Print node preparation summary
+      ansible.builtin.debug:
+        msg: |
+          user={{ app_user }} group={{ app_group }}
+          folders={{ app_root }} {{ app_root }}/releases {{ app_data_dir }} {{ app_log_dir }} {{ env_dir }}
+          ports app={{ app_port }} nginx={{ nginx_port }}
+          nginx={{ ansible_facts.services['nginx.service'].state | default('unknown') }} enabled={{ ansible_facts.services['nginx.service'].status | default('unknown') }}
+          retail-inventory={{ ansible_facts.services['retail-inventory.service'].state | default('unknown') }} enabled={{ ansible_facts.services['retail-inventory.service'].status | default('unknown') }}
+          nginx_health={{ nginx_health.status | default('skipped-check-mode') }}
+      tags: ['always']

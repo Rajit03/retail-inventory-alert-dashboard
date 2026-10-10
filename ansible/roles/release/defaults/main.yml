@@ -1,0 +1,4 @@
+---
+releases_keep: 3
+health_retries: 15
+health_delay: 2
