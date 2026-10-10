@@ -284,85 +284,14 @@ pipeline {
                 script {
                     def appPort = (params.DEPLOY_ENV == 'staging') ? '3002' : '3001'
                     def nginxPort = (params.DEPLOY_ENV == 'staging') ? '8096' : '8095'
-                    def containerName = "retail-inventory-${params.DEPLOY_ENV}"
+                    def gitCommit = bat(
+                        script: '@git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
 
                     bat "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\node-ops.ps1 -Action healthcheck -LogFile logs\\ansible-healthcheck-${BUILD_NUMBER}.log"
 
-                    bat """
-                        powershell -NoProfile -ExecutionPolicy Bypass -Command "& {
-                            `$appPort = '${appPort}';
-                            `$nginxPort = '${nginxPort}';
-                            `$containerName = '${containerName}';
-                            `$buildNumber = '${BUILD_NUMBER}';
-                            `$releaseId = 'b${BUILD_NUMBER}';
-                            `$imageTag = '${env.IMAGE_TAG}';
-                            `$gitCommit = (git rev-parse --short HEAD).Trim();
-
-                            Write-Host '==================================================';
-                            Write-Host ' Executing End-to-End Verification';
-                            Write-Host '==================================================';
-
-                            `$failed = `$false;
-                            `$rows = @();
-
-                            # 1. Docker Container Health
-                            `$dockerHealth = (& docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' `$containerName 2>`$null).Trim();
-                            `$cPort = (& docker port `$containerName 2>`$null | Out-String).Trim();
-                            `$cUrl = \"http://localhost:`$appPort/health\";
-                            `$cHttp = try { (Invoke-WebRequest -Uri `$cUrl -UseBasicParsing -TimeoutSec 3).Content.Trim() } catch { 'DOWN' };
-                            `$cPass = (`$dockerHealth -match 'healthy|none' -and `$cHttp -match '\"status\"\s*:\s*\"UP\"' -and `$cPort -match `$appPort);
-                            if (-not `$cPass) { `$failed = `$true };
-                            `$rows += [PSCustomObject]@{ Component = 'Docker Container (' + `$containerName + ')'; Target = `$cUrl + ' (Port ' + `$cPort + ')'; Result = if (`$cPass) { 'PASS' } else { 'FAIL' } };
-
-                            # 2. Ansible Node Direct Health (:8300/health)
-                            `$wslHealthUrl = 'http://localhost:8300/health';
-                            `$wslHealth = (& wsl.exe -d Ubuntu-Retail -- curl -s http://127.0.0.1:8300/health 2>`$null).Trim();
-                            `$wslHealthPass = (`$wslHealth -match '\"status\"\s*:\s*\"UP\"');
-                            if (-not `$wslHealthPass) { `$failed = `$true };
-                            `$rows += [PSCustomObject]@{ Component = 'Ansible WSL Node Health'; Target = `$wslHealthUrl; Result = if (`$wslHealthPass) { 'PASS' } else { 'FAIL' } };
-
-                            # 3. Ansible Node Items API (:8300/api/items)
-                            `$wslItemsUrl = 'http://localhost:8300/api/items';
-                            `$wslItems = (& wsl.exe -d Ubuntu-Retail -- curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8300/api/items 2>`$null).Trim();
-                            `$wslItemsPass = (`$wslItems -eq '200');
-                            if (-not `$wslItemsPass) { `$failed = `$true };
-                            `$rows += [PSCustomObject]@{ Component = 'Ansible WSL Items API'; Target = `$wslItemsUrl; Result = if (`$wslItemsPass) { 'PASS' } else { 'FAIL' } };
-
-                            # 4. Windows Nginx Reverse Proxy (:8095 or :8096) - WARN only
-                            `$winNginxUrl = \"http://localhost:`$nginxPort/health\";
-                            `$winNginx = try { (Invoke-WebRequest -Uri `$winNginxUrl -UseBasicParsing -TimeoutSec 3).StatusCode } catch { 'UNREACHABLE' };
-                            `$winNginxPass = (`$winNginx -eq 200);
-                            `$rows += [PSCustomObject]@{ Component = 'Windows Nginx Proxy (' + `$nginxPort + ')'; Target = `$winNginxUrl; Result = if (`$winNginxPass) { 'PASS' } else { 'WARN (Unreachable)' } };
-
-                            # Format Output Table and evidence file
-                            `$lines = @(
-                                '========================================================================================',
-                                '                       END-TO-END SYSTEM VERIFICATION REPORT',
-                                '========================================================================================',
-                                'Build Number : #' + `$buildNumber,
-                                'Git Commit   : ' + `$gitCommit,
-                                'Release ID   : ' + `$releaseId,
-                                'Docker Image : ' + `$imageTag,
-                                'Verified At  : ' + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss UTC'),
-                                '----------------------------------------------------------------------------------------',
-                                ('{0,-32} | {1,-36} | {2}' -f 'COMPONENT', 'TARGET URL / ENDPOINT', 'RESULT'),
-                                '----------------------------------------------------------------------------------------'
-                            );
-
-                            foreach (`$r in `$rows) {
-                                `$lines += ('{0,-32} | {1,-36} | {2}' -f `$r.Component, `$r.Target, `$r.Result);
-                            }
-                            `$lines += '========================================================================================';
-
-                            `$lines | Out-File -FilePath 'e2e-verification.txt' -Encoding utf8;
-                            Get-Content 'e2e-verification.txt';
-
-                            if (`$failed) {
-                                Write-Error 'End-to-End verification failed! Docker container or Ansible node is unhealthy.';
-                                exit 1;
-                            }
-                        }"
-                    """
+                    bat "powershell -NoProfile -ExecutionPolicy Bypass -File scripts\\e2e-verify.ps1 -Environment ${params.DEPLOY_ENV} -HostPort ${appPort} -NginxPort ${nginxPort} -ReleaseId b${BUILD_NUMBER} -ImageTag ${env.IMAGE_TAG} -GitCommit ${gitCommit} -BuildNumber ${BUILD_NUMBER}"
                 }
             }
         }
