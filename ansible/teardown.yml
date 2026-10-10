@@ -1,0 +1,164 @@
+---
+- name: Teardown node to clean state
+  hosts: retail_nodes
+  become: true
+  tasks:
+    - name: Guard - Validate teardown confirmation and inventory hostname
+      ansible.builtin.assert:
+        that:
+          - confirm_teardown is defined
+          - confirm_teardown == 'yes'
+          - inventory_hostname == 'retail-node'
+        fail_msg: "Teardown aborted: Requires '-e confirm_teardown=yes' and inventory hostname 'retail-node'."
+
+    - name: Stop and disable retail-inventory service
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: stopped
+        enabled: false
+      ignore_errors: true
+
+    - name: Remove retail-inventory systemd unit file
+      ansible.builtin.file:
+        path: "/etc/systemd/system/{{ app_name }}.service"
+        state: absent
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Remove Nginx configuration file
+      ansible.builtin.file:
+        path: "/etc/nginx/conf.d/{{ app_name }}.conf"
+        state: absent
+
+    - name: Stop Nginx service
+      ansible.builtin.systemd:
+        name: nginx
+        state: stopped
+      ignore_errors: true
+
+    - name: Purge nginx and nodejs packages
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - nginx-core
+          - nginx-common
+          - nodejs
+        state: absent
+        purge: true
+        autoremove: true
+
+    - name: Remove NodeSource apt repository source
+      ansible.builtin.file:
+        path: /etc/apt/sources.list.d/nodesource.list
+        state: absent
+
+    - name: Remove NodeSource GPG key
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/nodesource.asc
+        state: absent
+
+    - name: Update apt cache after repository removal
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Remove application directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "{{ app_root }}"
+        - "{{ app_log_dir }}"
+        - "{{ env_dir }}"
+
+    - name: Remove retailapp user
+      ansible.builtin.user:
+        name: "{{ app_user }}"
+        state: absent
+        remove: true
+      ignore_errors: true
+
+    - name: Remove retailapp group
+      ansible.builtin.group:
+        name: "{{ app_group }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Check whether nginx binary is uninstalled
+      ansible.builtin.command: which nginx
+      register: which_nginx
+      failed_when: false
+      changed_when: false
+
+    - name: Check whether node binary is uninstalled
+      ansible.builtin.command: which node
+      register: which_node
+      failed_when: false
+      changed_when: false
+
+    - name: Check whether retailapp user is removed
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ app_user }}"
+      register: getent_retailapp
+      ignore_errors: true
+
+    - name: Check whether application directories are removed
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ app_root }}"
+        - "{{ app_log_dir }}"
+        - "{{ env_dir }}"
+      register: clean_dir_stats
+
+    - name: Verify port 3300 is stopped
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port }}"
+        state: stopped
+        timeout: 3
+      register: port_3300_clean
+      ignore_errors: true
+
+    - name: Verify port 8300 is stopped
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ nginx_port }}"
+        state: stopped
+        timeout: 3
+      register: port_8300_clean
+      ignore_errors: true
+
+    - name: Compute clean state status flags
+      ansible.builtin.set_fact:
+        nginx_uninstalled: "{{ which_nginx.rc != 0 }}"
+        node_uninstalled: "{{ which_node.rc != 0 }}"
+        user_removed: "{{ getent_retailapp.failed | default(false) }}"
+        dirs_removed: "{{ (clean_dir_stats.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | list | length) == 0 }}"
+        ports_free: "{{ (not port_3300_clean.failed | default(false)) and (not port_8300_clean.failed | default(false)) }}"
+
+    - name: Print CLEAN-STATE report table
+      ansible.builtin.debug:
+        msg: |
+          ========================== CLEAN-STATE TABLE ==========================
+          nginx uninstalled        : {{ 'PASS (not present)' if nginx_uninstalled else 'FAIL' }}
+          node uninstalled         : {{ 'PASS (not present)' if node_uninstalled else 'FAIL' }}
+          retailapp user removed   : {{ 'PASS (not present)' if user_removed else 'FAIL' }}
+          directories removed      : {{ 'PASS (cleaned)' if dirs_removed else 'FAIL' }}
+          ports 3300/8300 free     : {{ 'PASS (free)' if ports_free else 'FAIL' }}
+          -----------------------------------------------------------------------
+          OVERALL CLEAN STATE      : {{ 'PASS (Node is CLEAN)' if (nginx_uninstalled and node_uninstalled and user_removed and dirs_removed and ports_free) else 'FAIL' }}
+          =======================================================================
+
+    - name: Assert node is in clean state
+      ansible.builtin.assert:
+        that:
+          - nginx_uninstalled
+          - node_uninstalled
+          - user_removed
+          - dirs_removed
+          - ports_free
+        fail_msg: "Clean state assertion failed!"
+        success_msg: "Node teardown verified: Node returned to a completely clean state."

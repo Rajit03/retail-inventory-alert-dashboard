@@ -1,0 +1,130 @@
+---
+- name: Perform health check on Retail Inventory node
+  hosts: retail_nodes
+  become: true
+  tasks:
+    - name: Verify application user exists
+      ansible.builtin.getent:
+        database: passwd
+        key: "{{ app_user }}"
+      register: user_check
+      ignore_errors: true
+
+    - name: Verify required directories exist
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ app_root }}"
+        - "{{ app_root }}/releases"
+        - "{{ app_data_dir }}"
+        - "{{ app_log_dir }}"
+        - "{{ env_dir }}"
+      register: dir_stats
+
+    - name: Check whether required directories exist
+      ansible.builtin.set_fact:
+        dirs_ok: "{{ (dir_stats.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | selectattr('stat.isdir', 'defined') | selectattr('stat.isdir') | list | length) == (dir_stats.results | length) }}"
+
+    - name: Collect service facts
+      ansible.builtin.service_facts:
+
+    - name: Evaluate service active states
+      ansible.builtin.set_fact:
+        nginx_active: "{{ (ansible_facts.services['nginx.service'].state | default('')) == 'running' }}"
+        app_active: "{{ (ansible_facts.services['retail-inventory.service'].state | default('')) == 'running' }}"
+
+    - name: Check if application port 3300 is listening
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ app_port }}"
+        timeout: 3
+        state: started
+      register: app_port_check
+      ignore_errors: true
+
+    - name: Check if Nginx port 8300 is listening
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: "{{ nginx_port }}"
+        timeout: 3
+        state: started
+      register: proxy_port_check
+      ignore_errors: true
+
+    - name: Check direct application health endpoint
+      ansible.builtin.uri:
+        url: "{{ health_app_url }}"
+        status_code: 200
+        return_content: true
+      register: direct_health
+      ignore_errors: true
+
+    - name: Check Nginx proxy health endpoint
+      ansible.builtin.uri:
+        url: "{{ health_proxy_url }}"
+        status_code: 200
+        return_content: true
+      register: proxy_health
+      ignore_errors: true
+
+    - name: Check items API endpoint through Nginx
+      ansible.builtin.uri:
+        url: "{{ health_items_url }}"
+        status_code: 200
+        return_content: true
+      register: items_api
+      ignore_errors: true
+
+    - name: Read release symlinks
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+        follow: false
+      loop:
+        - { name: 'previous', path: "{{ app_root }}/previous" }
+        - { name: 'stable', path: "{{ app_root }}/stable" }
+        - { name: 'current', path: "{{ app_root }}/current" }
+      register: symlink_stats
+
+    - name: Set release ID facts
+      ansible.builtin.set_fact:
+        rel_previous: "{{ (symlink_stats.results[0].stat.lnk_target | default('none')) | basename }}"
+        rel_stable: "{{ (symlink_stats.results[1].stat.lnk_target | default('none')) | basename }}"
+        rel_current: "{{ (symlink_stats.results[2].stat.lnk_target | default('none')) | basename }}"
+        check_user_pass: "{{ not user_check.failed | default(false) }}"
+        check_dirs_pass: "{{ dirs_ok }}"
+        check_nginx_pass: "{{ nginx_active }}"
+        check_app_pass: "{{ app_active }}"
+        check_port3300_pass: "{{ not app_port_check.failed | default(false) }}"
+        check_port8300_pass: "{{ not proxy_port_check.failed | default(false) }}"
+        check_direct_health_pass: "{{ (direct_health.status | default(0)) == 200 and (direct_health.json.status | default('')) == 'UP' }}"
+        check_proxy_health_pass: "{{ (proxy_health.status | default(0)) == 200 and (proxy_health.json.status | default('')) == 'UP' }}"
+        check_items_api_pass: "{{ (items_api.status | default(0)) == 200 and items_api.json is defined and items_api.json is iterable }}"
+
+    - name: Compute overall health status
+      ansible.builtin.set_fact:
+        all_checks_passed: "{{ check_user_pass and check_dirs_pass and check_nginx_pass and check_app_pass and check_port3300_pass and check_port8300_pass and check_direct_health_pass and check_proxy_health_pass and check_items_api_pass }}"
+
+    - name: Print health check report table
+      ansible.builtin.debug:
+        msg: |
+          ========================= HEALTH CHECK REPORT =========================
+          User '{{ app_user }}'           : {{ 'PASS' if check_user_pass else 'FAIL' }}
+          Required Directories      : {{ 'PASS' if check_dirs_pass else 'FAIL' }}
+          Nginx Service (active)    : {{ 'PASS' if check_nginx_pass else 'FAIL' }}
+          App Service (active)      : {{ 'PASS' if check_app_pass else 'FAIL' }}
+          Port {{ app_port }} (Node.js)         : {{ 'PASS' if check_port3300_pass else 'FAIL' }}
+          Port {{ nginx_port }} (Nginx)           : {{ 'PASS' if check_port8300_pass else 'FAIL' }}
+          GET :{{ app_port }}/health (direct)   : {{ 'PASS' if check_direct_health_pass else 'FAIL' }} (status={{ direct_health.status | default('ERR') }})
+          GET :{{ nginx_port }}/health (proxy)    : {{ 'PASS' if check_proxy_health_pass else 'FAIL' }} (status={{ proxy_health.status | default('ERR') }})
+          GET :{{ nginx_port }}/api/items         : {{ 'PASS' if check_items_api_pass else 'FAIL' }} (status={{ items_api.status | default('ERR') }})
+          -----------------------------------------------------------------------
+          Active Release Symlinks   : previous={{ rel_previous }} | stable={{ rel_stable }} | current={{ rel_current }}
+          OVERALL RESULT            : {{ 'PASS' if all_checks_passed else 'FAIL' }}
+          =======================================================================
+
+    - name: Assert all health checks passed
+      ansible.builtin.assert:
+        that:
+          - all_checks_passed
+        fail_msg: "Health check failed for Retail Inventory Alert Dashboard."
+        success_msg: "All health checks passed successfully."

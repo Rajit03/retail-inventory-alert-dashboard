@@ -1,21 +1,12 @@
-const express = require('express');
-
-const app = express();
+const app = require('./app');
 const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+let server;
 
-app.get('/health', (req, res) => {
-  res.json({ status: 'UP' });
-});
-
-app.get('/', (req, res) => {
-  res.send('Retail Inventory Alert Dashboard');
-});
-
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+if (require.main === module) {
+  server = app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
 
 module.exports = { app, server };
