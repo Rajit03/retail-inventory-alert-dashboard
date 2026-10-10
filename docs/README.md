@@ -14,4 +14,5 @@ This directory contains the complete technical specifications, architectural des
 - [selenium-test-plan.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/selenium-test-plan.md): Test specification and Page Object Model design for Maven/JUnit headless Chrome browser UI automated regression tests.
 - [ci-setup.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/ci-setup.md): Early CI environment setup notes and service dependencies for Windows host execution.
 - [issues-to-create.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/issues-to-create.md): Historical milestone and backlog issue tracking log for project roadmap phases.
+- [release-notes-v2.0.0.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/release-notes-v2.0.0.md): Final DevOps release notes documenting Tasks 1-15, architecture summary, port allocations, and pipeline verification.
 - [task14/summary.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/task14/summary.md): Execution summary and audit log index for Task 14 Ansible provisioning, deployment, and rollback reliability experiments.

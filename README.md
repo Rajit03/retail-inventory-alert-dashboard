@@ -186,6 +186,7 @@ Comprehensive engineering documents located under `docs/`:
 - [docs/selenium-test-plan.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/selenium-test-plan.md) — Selenium POM architecture and test plan.
 - [docs/ci-setup.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/ci-setup.md) — Initial CI service configuration guide.
 - [docs/task14/summary.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/task14/summary.md) — Task 14 Ansible provisioning and rollback experiment logs.
+- [docs/release-notes-v2.0.0.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/release-notes-v2.0.0.md) — Final v2.0.0 DevOps release notes.
 - [docs/README.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/README.md) — One-line index of all documentation files.
 
 ---
