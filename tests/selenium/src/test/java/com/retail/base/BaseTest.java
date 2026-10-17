@@ -29,7 +29,17 @@ public abstract class BaseTest {
         options.addArguments("--no-sandbox");
         options.addArguments("--disable-dev-shm-usage");
 
-        driver = new ChromeDriver(options);
+        try {
+            driver = new ChromeDriver(options);
+        } catch (org.openqa.selenium.SessionNotCreatedException e) {
+            // When Chrome auto-updates, the cached driver might be momentarily mismatched.
+            // Retrying once allows Selenium Manager to download and bind the matching driver.
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException ignored) {
+            }
+            driver = new ChromeDriver(options);
+        }
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
     }
 
