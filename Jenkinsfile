@@ -32,7 +32,7 @@ pipeline {
 
         booleanParam(
             name: 'RUN_ANSIBLE',
-            defaultValue: true,
+            defaultValue: false,
             description: 'Provision and deploy the release to the Ansible-managed WSL node'
         )
     }
@@ -304,11 +304,13 @@ pipeline {
                 def nginxPort = (params.DEPLOY_ENV == 'staging') ? '8096' : '8095'
 
                 echo "=========================================="
-                echo "Deployment & End-to-End Verification successful!"
+                echo "Deployment successful!"
                 echo "Environment : ${params.DEPLOY_ENV}"
                 echo "Build       : #${BUILD_NUMBER}"
                 echo "Application : http://localhost:${nginxPort}/items"
-                echo "Ansible Node: http://localhost:8300/items"
+                if (params.RUN_ANSIBLE) {
+                    echo "Ansible Node: http://localhost:8300/items"
+                }
                 echo "=========================================="
             }
         }
