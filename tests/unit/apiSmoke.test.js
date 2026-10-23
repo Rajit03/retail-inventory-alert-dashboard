@@ -6,11 +6,18 @@ const fs = require('node:fs');
 describe('API Smoke Tests', () => {
   let server;
   let baseUrl;
+  let authCookie;
+  let csrfToken;
   const tempDbPath = path.resolve(__dirname, '../../data/smoke_test.db');
 
   before(async () => {
-    // Set DB_PATH before loading database/app
+    // Set test-only environment before loading database and app
+    process.env.NODE_ENV = 'test';
     process.env.DB_PATH = tempDbPath;
+    process.env.SESSION_SECRET = 'test-session-secret-smoke-test-1234';
+    process.env.SEED_MANAGER_PASSWORD = 'TestManagerPassword123!';
+    process.env.SEED_STAFF_PASSWORD = 'TestStaffPassword123!';
+    process.env.SEED_PURCHASING_PASSWORD = 'TestPurchasingPassword123!';
 
     // Delete pre-existing test DB if any
     if (fs.existsSync(tempDbPath)) {
@@ -26,6 +33,24 @@ describe('API Smoke Tests', () => {
         resolve();
       });
     });
+
+    // Log in as manager to get session cookie and csrfToken for protected API endpoints
+    const loginRes = await fetch(`${baseUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'manager',
+        password: 'TestManagerPassword123!'
+      })
+    });
+    assert.strictEqual(loginRes.status, 200);
+    const loginData = await loginRes.json();
+    csrfToken = loginData.csrfToken;
+
+    const rawCookies = loginRes.headers.getSetCookie
+      ? loginRes.headers.getSetCookie()
+      : [loginRes.headers.get('set-cookie')];
+    authCookie = rawCookies.map(c => c.split(';')[0]).join('; ');
   });
 
   after(async () => {
@@ -50,7 +75,9 @@ describe('API Smoke Tests', () => {
   });
 
   it('GET /api/items returns 200 and a JSON array', async () => {
-    const res = await fetch(`${baseUrl}/api/items`);
+    const res = await fetch(`${baseUrl}/api/items`, {
+      headers: { Cookie: authCookie }
+    });
     assert.strictEqual(res.status, 200);
     const body = await res.json();
     assert.ok(Array.isArray(body));
@@ -59,7 +86,11 @@ describe('API Smoke Tests', () => {
   it('POST /api/items with an empty name returns 400', async () => {
     const res = await fetch(`${baseUrl}/api/items`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: authCookie,
+        'x-csrf-token': csrfToken
+      },
       body: JSON.stringify({
         name: '',
         category: 'Test',
@@ -74,7 +105,9 @@ describe('API Smoke Tests', () => {
   });
 
   it('GET /api/alerts returns 200', async () => {
-    const res = await fetch(`${baseUrl}/api/alerts`);
+    const res = await fetch(`${baseUrl}/api/alerts`, {
+      headers: { Cookie: authCookie }
+    });
     assert.strictEqual(res.status, 200);
     const body = await res.json();
     assert.ok(Array.isArray(body));
