@@ -55,6 +55,17 @@ $env:PORT = "$Port"
 $env:NODE_ENV = 'test'
 $env:DB_PATH = "$testDb"
 
+# Fixed test-only credentials for temporary CI instance (documented as non-secret because instance and database are deleted after run)
+$testSessionSecret = 'ci-temporary-test-session-secret-retail-alert-9999'
+$testManagerPassword = 'TestManagerPass123!'
+$testStaffPassword = 'TestStaffPass123!'
+$testPurchasingPassword = 'TestPurchasingPass123!'
+
+$env:SESSION_SECRET = $testSessionSecret
+$env:SEED_MANAGER_PASSWORD = $testManagerPassword
+$env:SEED_STAFF_PASSWORD = $testStaffPassword
+$env:SEED_PURCHASING_PASSWORD = $testPurchasingPassword
+
 Write-Host "Seeding test database at $testDb..."
 Push-Location $workspaceRoot
 try {
@@ -150,7 +161,7 @@ try {
     Write-Host "Running Maven Selenium tests..."
     Push-Location $workspaceRoot
     try {
-        cmd /c "mvn -B -f tests/selenium/pom.xml test `"-Dbase.url=http://localhost:$Port`" -Dheadless=true"
+        cmd /c "mvn -B -f tests/selenium/pom.xml test `"-Dbase.url=http://localhost:$Port`" -Dheadless=true `"-Dtest.manager.password=$testManagerPassword`" `"-Dtest.staff.password=$testStaffPassword`" `"-Dtest.purchasing.password=$testPurchasingPassword`""
         $testExitCode = $LASTEXITCODE
     } finally {
         Pop-Location

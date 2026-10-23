@@ -29,6 +29,17 @@ $WslAnsibleDir = "$WslRepoRoot/ansible"
 $AnsibleVersion = (& wsl.exe -d $Distro -- bash -lc "ansible --version | head -n 1" 2>$null).Trim()
 $CurrentDate = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 
+# Resolve deployment secrets for Ansible
+$SecretsYmlWin = "C:\deploy\retail-inventory\secrets.yml"
+$WslSecretsYml = ""
+if ($Action -in @('provision', 'deploy', 'rollback')) {
+    if (-not (Test-Path $SecretsYmlWin)) {
+        Write-Error "Deployment secrets file missing: $SecretsYmlWin. Run scripts\init-secrets.ps1 first."
+        exit 1
+    }
+    $WslSecretsYml = (& wsl.exe -d $Distro -- wslpath -a -u "$($SecretsYmlWin.Replace('\', '/'))" 2>$null).Trim()
+}
+
 $PlaybookCmd = ""
 
 switch ($Action) {
@@ -36,7 +47,7 @@ switch ($Action) {
         $PlaybookCmd = "ansible-playbook teardown.yml -e confirm_teardown=yes"
     }
     'provision' {
-        $PlaybookCmd = "ansible-playbook site.yml"
+        $PlaybookCmd = "ansible-playbook site.yml -e @$WslSecretsYml"
     }
     'deploy' {
         if (-not $PackagePath) {
@@ -68,16 +79,16 @@ switch ($Action) {
             $ReleaseId = "rel-$(Get-Date -Format 'yyyyMMddHHmmss')"
         }
 
-        $PlaybookCmd = "ansible-playbook deploy.yml -e release_id=$ReleaseId -e release_package='$WslPackagePath'"
+        $PlaybookCmd = "ansible-playbook deploy.yml -e release_id=$ReleaseId -e release_package='$WslPackagePath' -e @$WslSecretsYml"
     }
     'healthcheck' {
         $PlaybookCmd = "ansible-playbook healthcheck.yml"
     }
     'rollback' {
         if ($TargetRelease) {
-            $PlaybookCmd = "ansible-playbook rollback.yml -e target_release=$TargetRelease"
+            $PlaybookCmd = "ansible-playbook rollback.yml -e target_release=$TargetRelease -e @$WslSecretsYml"
         } else {
-            $PlaybookCmd = "ansible-playbook rollback.yml"
+            $PlaybookCmd = "ansible-playbook rollback.yml -e @$WslSecretsYml"
         }
     }
 }

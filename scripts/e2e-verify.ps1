@@ -95,20 +95,33 @@ $rows += [PSCustomObject]@{
     Result    = if ($wslHealthPass) { 'PASS' } else { 'FAIL' }
 }
 
-# 3. Ansible Node Items API (:8300/api/items) inside WSL
+# 3. Ansible Node Items API (:8300/api/items) inside WSL - Auth Protected (Expect 401)
 $wslItemsUrl = 'http://localhost:8300/api/items'
 $wslItems = (& wsl.exe -d Ubuntu-Retail -- curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8300/api/items 2>$null).Trim()
-$wslItemsPass = ($wslItems -eq '200')
+$wslItemsPass = ($wslItems -eq '401')
 if (-not $wslItemsPass) {
     $failed = $true
 }
 $rows += [PSCustomObject]@{
-    Component = 'Ansible WSL Items API'
-    Target    = $wslItemsUrl
+    Component = 'Ansible WSL Items API (Auth Protected)'
+    Target    = "$wslItemsUrl (HTTP $wslItems, Expect 401)"
     Result    = if ($wslItemsPass) { 'PASS' } else { 'FAIL' }
 }
 
-# 4. Windows Nginx Reverse Proxy (:8095 or :8096) - WARN only
+# 4. Ansible Node Login Endpoint (:8300/login) inside WSL - Public (Expect 200)
+$wslLoginUrl = 'http://localhost:8300/login'
+$wslLogin = (& wsl.exe -d Ubuntu-Retail -- curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8300/login 2>$null).Trim()
+$wslLoginPass = ($wslLogin -eq '200')
+if (-not $wslLoginPass) {
+    $failed = $true
+}
+$rows += [PSCustomObject]@{
+    Component = 'Ansible WSL Login Endpoint'
+    Target    = "$wslLoginUrl (HTTP $wslLogin, Expect 200)"
+    Result    = if ($wslLoginPass) { 'PASS' } else { 'FAIL' }
+}
+
+# 5. Windows Nginx Reverse Proxy (:8095 or :8096) - WARN only
 $winNginxUrl = "http://localhost:$NginxPort/health"
 $winNginx = try { (Invoke-WebRequest -Uri $winNginxUrl -UseBasicParsing -TimeoutSec 3).StatusCode } catch { 'UNREACHABLE' }
 $winNginxPass = ($winNginx -eq 200)
@@ -117,6 +130,7 @@ $rows += [PSCustomObject]@{
     Target    = $winNginxUrl
     Result    = if ($winNginxPass) { 'PASS' } else { 'WARN (Unreachable)' }
 }
+
 
 # Format Output Table and evidence file
 $timestamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd HH:mm:ss UTC')

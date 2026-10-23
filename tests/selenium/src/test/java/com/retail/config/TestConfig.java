@@ -12,4 +12,16 @@ public class TestConfig {
     public static boolean isHeadless() {
         return Boolean.parseBoolean(System.getProperty("headless", "true"));
     }
+
+    public static String getManagerPassword() {
+        return System.getProperty("test.manager.password", "TestManagerPass123!");
+    }
+
+    public static String getStaffPassword() {
+        return System.getProperty("test.staff.password", "TestStaffPass123!");
+    }
+
+    public static String getPurchasingPassword() {
+        return System.getProperty("test.purchasing.password", "TestPurchasingPass123!");
+    }
 }

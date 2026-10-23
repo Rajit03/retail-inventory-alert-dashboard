@@ -129,5 +129,27 @@ This document compiles **30 core technical viva questions and concise, productio
 #### Q29: How does `scripts/deploy-container.ps1` resolve host port conflicts on port 3001?
 **Answer:** It inspects active listeners via `Get-NetTCPConnection -LocalPort 3001`. If occupied by a leftover repository Node process (`node.exe` running `src/server.js`), it forcibly terminates the process (`Stop-Process -Force`) and waits for the socket to clear before executing `docker run`. If occupied by an unrelated foreign process, it halts safely with an error.
 
-#### Q30: What are the primary security limitations of the current demonstration environment?
-**Answer:** The system runs on a single host without network perimeter firewalls, uses plain HTTP without TLS certificates, runs an unauthenticated local Docker registry, stores plain-text database credentials, and lacks user authentication/RBAC within the application itself.
+#### Q30: What are the primary infrastructure limitations of the current demonstration environment?
+**Answer:** The system runs on a single host without network perimeter firewalls, uses plain HTTP without public TLS certificates, runs an unauthenticated local Docker registry, and uses in-memory rate limiting that is not shared across distributed replicas.
+
+---
+
+### 8. Application Security, RBAC & Secrets Management
+
+#### Q31: How is password security implemented in this application, and why was `bcryptjs` selected over native `bcrypt`?
+**Answer:** Passwords are salted and hashed using `bcryptjs` with cost factor 12. `bcryptjs` is pure JavaScript, preventing native C++ compilation dependencies across heterogeneous developer environments, Windows hosts, and Linux nodes while maintaining strong one-way cryptographic protection against rainbow tables and dictionary attacks.
+
+#### Q32: Explain the role-based access control (RBAC) model and permissions hierarchy across `manager`, `staff`, and `purchasing`.
+**Answer:** The application enforces 3 discrete roles:
+- `manager`: Full administrative privileges (view, add, edit, delete items, transactions, alerts, order updates).
+- `staff`: Operational privileges (view, add, edit items, transactions, alerts, order updates; delete is forbidden -> 403).
+- `purchasing`: Procurement privileges (view catalog/transactions/alerts, update orders; modifying items or recording transactions is forbidden -> 403; default landing page is `/alerts`).
+
+#### Q33: How does the application protect against Cross-Site Request Forgery (CSRF)?
+**Answer:** A cryptographically random token is generated upon session establishment and saved in `req.session.csrfToken`. All mutating requests (POST, PUT, DELETE) must provide this token via either a hidden `_csrf` form parameter or an `x-csrf-token` request header. Mismatches return HTTP 403 Forbidden. Only `POST /api/login` is exempt since no authenticated session exists prior to login.
+
+#### Q34: How does the login rate-limiting mechanism prevent credential stuffing and brute-force attacks?
+**Answer:** An `express-rate-limit` middleware enforces a threshold of 5 failed login attempts per minute per IP address. Exceeding this triggers an HTTP 429 Too Many Requests response. In addition, the authentication endpoint returns uniform generic error messages (`Invalid username or password`) regardless of whether the username exists, mitigating account enumeration.
+
+#### Q35: How are secrets securely generated, stored, and passed between Docker containers and Ansible playbooks?
+**Answer:** `scripts/init-secrets.ps1` generates high-entropy random keys (48-char hex `SESSION_SECRET`, 16-char random passwords), writing `secrets.env` (Docker) and `secrets.yml` (Ansible) into `C:\deploy\retail-inventory\`, protected by strict NTFS ACLs (`icacls`). Docker consumes `secrets.env` via `--env-file`, while Ansible loads `secrets.yml` via `-e @/mnt/c/deploy/...`. Secrets files are strictly `.gitignore`d and never committed to source control.

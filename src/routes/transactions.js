@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const validateTransaction = require('../validators/transactionValidator');
+const { requirePermission } = require('../auth/middleware');
 
 // GET /transactions - web page listing all transactions
 router.get('/transactions', (req, res) => {
@@ -19,7 +20,7 @@ router.get('/transactions', (req, res) => {
 });
 
 // GET /transactions/new - web form to record transaction
-router.get('/transactions/new', (req, res) => {
+router.get('/transactions/new', requirePermission('transactions:write'), (req, res) => {
   try {
     const items = db.prepare('SELECT id, name, quantity FROM items ORDER BY name ASC').all();
     res.render('transactions/new', { items, errors: [], transaction: {} });
@@ -29,7 +30,7 @@ router.get('/transactions/new', (req, res) => {
 });
 
 // POST /transactions - web form submission to record transaction
-router.post('/transactions', (req, res) => {
+router.post('/transactions', requirePermission('transactions:write'), (req, res) => {
   const errors = validateTransaction(req.body);
   const itemId = req.body.item_id !== undefined ? Number(req.body.item_id) : Number(req.body.itemId);
   const type = req.body.type ? req.body.type.toUpperCase() : '';
@@ -93,7 +94,7 @@ router.post('/transactions', (req, res) => {
 });
 
 // POST /api/transactions - create stock transaction (API)
-router.post('/api/transactions', (req, res) => {
+router.post('/api/transactions', requirePermission('transactions:write'), (req, res) => {
   const errors = validateTransaction(req.body);
   if (errors.length > 0) {
     return res.status(400).json({ errors });

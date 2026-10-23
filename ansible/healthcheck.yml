@@ -67,12 +67,20 @@
       register: proxy_health
       ignore_errors: true
 
-    - name: Check items API endpoint through Nginx
+    - name: Check items API endpoint through Nginx (unauthenticated expects 401)
       ansible.builtin.uri:
         url: "{{ health_items_url }}"
-        status_code: 200
+        status_code: 401
         return_content: true
       register: items_api
+      ignore_errors: true
+
+    - name: Check login page endpoint through Nginx (expects 200)
+      ansible.builtin.uri:
+        url: "http://127.0.0.1:{{ nginx_port }}/login"
+        status_code: 200
+        return_content: true
+      register: login_page
       ignore_errors: true
 
     - name: Read release symlinks
@@ -98,11 +106,12 @@
         check_port8300_pass: "{{ not proxy_port_check.failed | default(false) }}"
         check_direct_health_pass: "{{ (direct_health.status | default(0)) == 200 and (direct_health.json.status | default('')) == 'UP' }}"
         check_proxy_health_pass: "{{ (proxy_health.status | default(0)) == 200 and (proxy_health.json.status | default('')) == 'UP' }}"
-        check_items_api_pass: "{{ (items_api.status | default(0)) == 200 and items_api.json is defined and items_api.json is iterable }}"
+        check_items_api_pass: "{{ (items_api.status | default(0)) == 401 }}"
+        check_login_pass: "{{ (login_page.status | default(0)) == 200 }}"
 
     - name: Compute overall health status
       ansible.builtin.set_fact:
-        all_checks_passed: "{{ check_user_pass and check_dirs_pass and check_nginx_pass and check_app_pass and check_port3300_pass and check_port8300_pass and check_direct_health_pass and check_proxy_health_pass and check_items_api_pass }}"
+        all_checks_passed: "{{ check_user_pass and check_dirs_pass and check_nginx_pass and check_app_pass and check_port3300_pass and check_port8300_pass and check_direct_health_pass and check_proxy_health_pass and check_items_api_pass and check_login_pass }}"
 
     - name: Print health check report table
       ansible.builtin.debug:
@@ -116,11 +125,13 @@
           Port {{ nginx_port }} (Nginx)           : {{ 'PASS' if check_port8300_pass else 'FAIL' }}
           GET :{{ app_port }}/health (direct)   : {{ 'PASS' if check_direct_health_pass else 'FAIL' }} (status={{ direct_health.status | default('ERR') }})
           GET :{{ nginx_port }}/health (proxy)    : {{ 'PASS' if check_proxy_health_pass else 'FAIL' }} (status={{ proxy_health.status | default('ERR') }})
-          GET :{{ nginx_port }}/api/items         : {{ 'PASS' if check_items_api_pass else 'FAIL' }} (status={{ items_api.status | default('ERR') }})
+          GET :{{ nginx_port }}/login (login page): {{ 'PASS' if check_login_pass else 'FAIL' }} (status={{ login_page.status | default('ERR') }})
+          GET :{{ nginx_port }}/api/items (401 auth): {{ 'PASS' if check_items_api_pass else 'FAIL' }} (status={{ items_api.status | default('ERR') }})
           -----------------------------------------------------------------------
           Active Release Symlinks   : previous={{ rel_previous }} | stable={{ rel_stable }} | current={{ rel_current }}
           OVERALL RESULT            : {{ 'PASS' if all_checks_passed else 'FAIL' }}
           =======================================================================
+
 
     - name: Assert all health checks passed
       ansible.builtin.assert:

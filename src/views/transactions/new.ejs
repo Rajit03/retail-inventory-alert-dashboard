@@ -19,6 +19,8 @@
 <div class="card">
   <div class="form-container">
     <form action="/transactions" method="POST">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+
       <div class="form-group">
         <label for="item_id" class="form-label">Item *</label>
         <select id="item_id" name="item_id" data-testid="item-select" class="form-control" required>

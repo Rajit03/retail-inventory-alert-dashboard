@@ -151,3 +151,11 @@ tests/selenium/target/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Deployment secrets and folders
+secrets.env
+secrets.yml
+/deploy/
+deploy/
+C:/deploy/
+

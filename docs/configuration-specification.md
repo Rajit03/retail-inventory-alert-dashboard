@@ -58,7 +58,7 @@ Base packages (`nginx`, `curl`, `git`, `ca-certificates`, `gnupg`, `build-essent
 
 | Path | Source | Owner | Mode | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| `/etc/retail-inventory/retail-inventory.env` | template `retail-inventory.env.j2` | `root:retailapp` | `640` | `NODE_ENV`, `PORT`, `DB_PATH` |
+| `/etc/retail-inventory/retail-inventory.env` | template `retail-inventory.env.j2` | `root:retailapp` | `640` | `NODE_ENV`, `PORT`, `DB_PATH`, `SESSION_SECRET`, `SEED_*_PASSWORD` |
 | `/etc/systemd/system/retail-inventory.service` | template `retail-inventory.service.j2` | `root:root` | `644` | systemd unit |
 | `/etc/nginx/conf.d/retail-inventory.conf` | template `nginx.conf.j2` | `root:root` | `644` | Nginx server on `nginx_port` |
 | `/etc/nginx/sites-enabled/default` | removed (`state: absent`) | — | — | Default site must not steal the default HTTP port |
@@ -101,29 +101,30 @@ These ports avoid Windows/WSL ports already in use (3001, 3002, 3100, 3200, 5000
 | `node_major` | `22` | NodeSource major version (Dockerfile Node 22) |
 | `node_env` | `production` | `NODE_ENV` value |
 | `base_packages` | `nginx`, `curl`, `git`, `ca-certificates`, `gnupg`, `build-essential`, `python3` | Packages installed by the `common` role |
+| `session_secret` | (from secrets.yml) | 48-char random secret for cookie-session signing |
+| `seed_*_password` | (from secrets.yml) | Default seed credentials for manager, staff, purchasing |
 
-Inventory: `ansible/inventory/hosts.ini`. Group variables: `ansible/inventory/group_vars/retail_nodes.yml`. Playbook: `ansible/site.yml` (roles `common`, `nodejs`, `app_service`, `nginx`).
+Inventory: `ansible/inventory/hosts.ini`. Group variables: `ansible/inventory/group_vars/retail_nodes.yml`. Secrets: `/mnt/c/deploy/retail-inventory/secrets.yml` (managed via `scripts/init-secrets.ps1`). Playbook: `ansible/site.yml` (roles `common`, `nodejs`, `app_service`, `nginx`).
 
 ---
 
 ## 9. How to run
 
-Always use the **Ubuntu-Retail** WSL distribution (not `Ubuntu`). Ansible ignores `ansible.cfg` in a world-writable folder such as `/mnt/c` unless `ANSIBLE_CONFIG` is set.
+Always use the **Ubuntu-Retail** WSL distribution (not `Ubuntu`). Ansible ignores `ansible.cfg` in a world-writable folder such as `/mnt/c` unless `ANSIBLE_CONFIG` is set. Secrets are loaded via `-e @/mnt/c/deploy/retail-inventory/secrets.yml`.
 
 From Windows PowerShell:
 
 ```powershell
+# Using automated wrapper (recommended)
+powershell -ExecutionPolicy Bypass -File scripts\node-ops.ps1 -Action provision
+
+# Or direct WSL commands:
 wsl -d Ubuntu-Retail -- echo ok
 
-wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml --syntax-check"
+wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml -e @/mnt/c/deploy/retail-inventory/secrets.yml --syntax-check"
 
-wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml --check --diff"
-
-wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml"
-
-wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml --tags nginx"
+wsl -d Ubuntu-Retail -- bash -lc "cd /mnt/c/Projects/retail-inventory-alert-dashboard/ansible && export ANSIBLE_CONFIG=/mnt/c/Projects/retail-inventory-alert-dashboard/ansible/ansible.cfg && ansible-playbook site.yml -e @/mnt/c/deploy/retail-inventory/secrets.yml"
 ```
 
 Role tags: `common`, `nodejs`, `app_service`, `nginx`.
 
-This playbook only **prepares** the node. Application release deployment, idempotency demonstration, health check of the Node.js app, and rollback come in **Task 14**.

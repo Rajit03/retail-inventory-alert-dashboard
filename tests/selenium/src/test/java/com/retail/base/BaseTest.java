@@ -1,12 +1,14 @@
 package com.retail.base;
 
 import com.retail.config.TestConfig;
+import com.retail.pages.LoginPage;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import java.time.Duration;
@@ -16,6 +18,10 @@ public abstract class BaseTest {
     protected WebDriver driver;
     protected WebDriverWait wait;
     protected String baseUrl;
+
+    protected boolean shouldAutoLogin() {
+        return true;
+    }
 
     @BeforeEach
     public void setUp() {
@@ -41,6 +47,29 @@ public abstract class BaseTest {
             driver = new ChromeDriver(options);
         }
         wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+
+        if (shouldAutoLogin()) {
+            loginAsManager();
+        }
+    }
+
+    public void loginAsManager() {
+        loginAs("manager", TestConfig.getManagerPassword());
+    }
+
+    public void loginAsStaff() {
+        loginAs("staff", TestConfig.getStaffPassword());
+    }
+
+    public void loginAsPurchasing() {
+        loginAs("purchasing", TestConfig.getPurchasingPassword());
+    }
+
+    public void loginAs(String username, String password) {
+        LoginPage loginPage = new LoginPage(driver, wait, baseUrl);
+        loginPage.open();
+        loginPage.login(username, password);
+        wait.until(ExpectedConditions.urlMatches(".*/(items|alerts).*"));
     }
 
     @AfterEach

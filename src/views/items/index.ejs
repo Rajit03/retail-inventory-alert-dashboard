@@ -2,11 +2,14 @@
 
 <div class="page-header">
   <h1 class="page-title">Item Catalogue</h1>
-  <a href="/items/new" class="btn btn-primary">+ Add New Item</a>
+  <% if (typeof can === 'function' && can('items:write')) { %>
+    <a href="/items/new" class="btn btn-primary">+ Add New Item</a>
+  <% } %>
 </div>
 
 <div class="card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
   <form action="/items" method="GET" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+    <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
     <div style="flex: 2; min-width: 200px;">
       <label for="search" class="form-label">Search Item</label>
       <input 
@@ -92,7 +95,11 @@
                 <% } %>
               </td>
               <td>
-                <a href="/items/<%= item.id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                <% if (typeof can === 'function' && can('items:write')) { %>
+                  <a href="/items/<%= item.id %>/edit" class="btn btn-secondary btn-sm">Edit</a>
+                <% } else { %>
+                  <span style="color: var(--text-muted); font-size: 0.8125rem;">View only</span>
+                <% } %>
               </td>
             </tr>
           <% }) %>
@@ -105,7 +112,7 @@
     <p data-testid="no-items-message">No items found.</p>
     <% if ((typeof search !== 'undefined' && search) || (typeof category !== 'undefined' && category) || (typeof status !== 'undefined' && status)) { %>
       <a href="/items" class="btn btn-secondary">Clear filters</a>
-    <% } else { %>
+    <% } else if (typeof can === 'function' && can('items:write')) { %>
       <a href="/items/new" class="btn btn-primary">Add your first item</a>
     <% } %>
   </div>

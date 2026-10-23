@@ -8,17 +8,24 @@ This runbook provides a structured, timed, step-by-step procedure for delivering
 
 Execute these checks **5-10 minutes prior to the demonstration** to ensure all background daemons and targets are operational:
 
-1. **Run Automated Preflight Verification**:
+1. **Ensure Deployment Secrets Are Initialized**:
+   ```powershell
+   # If not already initialized, generate secure secrets:
+   powershell -ExecutionPolicy Bypass -File scripts\init-secrets.ps1
+   ```
+   *Assert `C:\deploy\retail-inventory\secrets.env` and `secrets.yml` exist.*
+
+2. **Run Automated Preflight Verification**:
    ```powershell
    powershell -ExecutionPolicy Bypass -File scripts\preflight.ps1
    ```
    *Assert that all mandatory checks report `PASS` with zero `FAIL` statuses.*
 
-2. **Prepare Browser Tabs**:
+3. **Prepare Browser Tabs**:
    - **Tab 1**: GitHub Repository: `https://github.com/Rajit03/retail-inventory-alert-dashboard`
    - **Tab 2**: Jenkins Pipeline Stage View: `http://localhost:8080/job/retail-inventory-alert-dashboard/`
-   - **Tab 3**: Docker Container Application: `http://localhost:3001/items`
-   - **Tab 4**: Ansible WSL Node Application: `http://localhost:8300/items`
+   - **Tab 3**: Docker Container Application: `http://localhost:3001/` (redirects to `/login`)
+   - **Tab 4**: Ansible WSL Node Application: `http://localhost:8300/` (redirects to `/login`)
    - **Tab 5**: Docker Registry Catalog: `http://localhost:5000/v2/_catalog`
 
 3. **Verify Open Ports & WSL State**:
@@ -40,8 +47,8 @@ Execute these checks **5-10 minutes prior to the demonstration** to ensure all b
 | **03:00 - 04:00** | **3. PR Merge & SCM Polling** | - Merge the Pull Request into `develop` on GitHub.<br/>- Navigate to Jenkins Dashboard (`http://localhost:8080/job/retail-inventory-alert-dashboard/`).<br/>- Explain SCM Polling (`pollSCM 'H/2 * * * *'`): Jenkins polls GitHub every 2 minutes due to local NAT isolation. | Jenkins automatically triggers build within 120 seconds. |
 | **04:00 - 07:00** | **4. Live Pipeline Execution** | - Watch the Jenkins Stage View execute sequentially:<br/>  1. **Checkout**: clones Git revision.<br/>  2. **Build**: executes `npm ci`, verifies Express, runs unit tests.<br/>  3. **UI Tests (Selenium)**: spawns ephemeral app on `:3100`, executes headless Chrome test suite.<br/>  4. **Package**: generates `.tgz` tarball and `build-info.json`.<br/>  5. **Docker Build & Push**: multi-stage Docker build, pushes image to `localhost:5000`.<br/>  6. **Deploy Container**: removes old container, checks port 3001, starts container, verifies health.<br/>  7. **Provision Node (Ansible)**: runs `site.yml` inside WSL `Ubuntu-Retail`.<br/>  8. **Deploy Release (Ansible)**: unpacks `.tgz`, creates atomic symlink `/opt/retail-inventory/current`, restarts systemd service.<br/>  9. **End-to-End Verification**: validates `:3001`, `:8300`, and proxy status. | All 10 pipeline stages transition to GREEN (Success). |
 | **07:00 - 08:30** | **5. Quality Gate & Selenium Gate** | - In Jenkins, click the latest build number -> **Test Result**.<br/>- Show the JUnit Surefire report displaying 100% passing tests.<br/>- Explain the Selenium architecture: Page Object Model, explicit waits (`ExpectedConditions`), and automatic screenshot capture on assertion failure. | Demonstrates automated regression prevention before deployment. |
-| **08:30 - 09:30** | **6. Docker Environment Verification** | - Query Docker registry tags:<br/>  `curl.exe -s http://localhost:5000/v2/retail-inventory-alert/tags/list`<br/>- Inspect running container:<br/>  `docker ps --filter name=retail-inventory-dev`<br/>  `docker port retail-inventory-dev`<br/>- Refresh browser at `http://localhost:3001/items` showing the updated UI change. | Demonstrates automated containerized release with verified port publication. |
-| **09:30 - 10:30** | **7. Ansible WSL Node Verification** | - Inspect WSL release directory structure:<br/>  `wsl -d Ubuntu-Retail -- ls -la /opt/retail-inventory`<br/>  `wsl -d Ubuntu-Retail -- ls -la /opt/retail-inventory/releases`<br/>- Highlight symlinks: `current -> releases/b<N>`, `stable -> releases/b<N>`, and `previous`.<br/>- Refresh browser at `http://localhost:8300/items` showing identical updated UI served by Linux Nginx -> systemd service. | Demonstrates atomic configuration management and release deployment on Linux. |
+| **08:30 - 09:30** | **6. Docker Environment & RBAC Demo** | - Query Docker registry tags:<br/>  `curl.exe -s http://localhost:5000/v2/retail-inventory-alert/tags/list`<br/>- Inspect running container:<br/>  `docker ps --filter name=retail-inventory-dev`<br/>  `docker port retail-inventory-dev`<br/>- Open `http://localhost:3001/items` in browser: observe automatic redirect to `/login?next=%2Fitems`.<br/>- Log in as `purchasing`: observe landing on `/alerts`, read-only catalog (no +Add Item/Delete).<br/>- Log in as `manager`: observe full privileges with +Add Item and Delete buttons. | Demonstrates automated containerized release with verified port publication and multi-role RBAC enforcement. |
+| **09:30 - 10:30** | **7. Ansible WSL Node Verification** | - Inspect WSL release directory structure:<br/>  `wsl -d Ubuntu-Retail -- ls -la /opt/retail-inventory`<br/>  `wsl -d Ubuntu-Retail -- ls -la /opt/retail-inventory/releases`<br/>- Highlight symlinks: `current -> releases/b<N>`, `stable -> releases/b<N>`, and `previous`.<br/>- Open browser at `http://localhost:8300/`: observe login gate and identical authenticated features served by Linux Nginx -> systemd service. | Demonstrates atomic configuration management and release deployment on Linux with secured environment. |
 | **10:30 - 12:00** | **8. Rehearsed Rollback Demonstration** | - Explain the automated self-healing rollback design.<br/>- Open PowerShell and execute a rehearsed rollback test:<br/>  `powershell -ExecutionPolicy Bypass -File scripts\node-ops.ps1 -Action rollback -LogFile logs\demo-rollback.log`<br/>- Inspect output showing playbook redirecting `current` symlink back to `previous`/`stable` and restarting `retail-inventory.service`.<br/>- Confirm health: `http://localhost:8300/health` answers `{"status":"UP"}` without human downtime. | Validates resilience and zero-downtime rollback capabilities. |
 
 ---
@@ -55,4 +62,6 @@ Execute these checks **5-10 minutes prior to the demonstration** to ensure all b
 | **WSL commands hang or return connection error** | WSL 2 distribution timed out or was suspended by Windows. | Run `wsl -d Ubuntu-Retail -- systemctl status retail-inventory` in PowerShell to wake up the WSL VM. |
 | **Selenium UI tests fail on port 3100** | ChromeDriver was blocked or background test app port collided. | Check `tests/selenium/target/ci-app.log` and captured failure screenshots under `tests/selenium/target/screenshots/`. |
 | **Docker pull fails during Deploy Container** | Registry container stopped. | Run `docker start registry` and verify with `curl.exe -s http://localhost:5000/v2/`. |
+| **Deployment fails: "Deployment secrets file missing"** | Secrets not generated in `C:\deploy\retail-inventory\`. | Run `powershell -ExecutionPolicy Bypass -File scripts\init-secrets.ps1` to generate secrets. |
+| **Login fails during demo** | Password mismatch or database not seeded. | Retrieve demo passwords from `C:\deploy\retail-inventory\secrets.env` (or run `scripts/init-secrets.ps1 -Force` and redeploy container). |
 | **Windows Nginx returns 502 or Connection Refused** | Nginx for Windows is not active. | Windows Nginx is marked `WARN only` in verification. Start it via `Start-Process "C:\nginx\nginx.exe" -WorkingDirectory "C:\nginx"` if required. |
