@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db/database');
 const validateItem = require('../validators/itemValidator');
 const getStockStatus = require('../utils/stockStatus');
+const { requirePermission } = require('../auth/middleware');
 
 // GET /api/items - list all items with optional search and filtering
 router.get('/', (req, res) => {
@@ -67,7 +68,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/items - create a new item
-router.post('/', (req, res) => {
+router.post('/', requirePermission('items:write'), (req, res) => {
   const errors = validateItem(req.body);
   if (errors.length > 0) {
     return res.status(400).json({ errors });
@@ -107,7 +108,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT /api/items/:id - update an existing item
-router.put('/:id', (req, res) => {
+router.put('/:id', requirePermission('items:write'), (req, res) => {
   try {
     const existingItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
     if (!existingItem) {
@@ -157,7 +158,7 @@ router.put('/:id', (req, res) => {
 });
 
 // PATCH /api/items/:id/order-status - update order status and expected date
-router.patch('/:id/order-status', (req, res) => {
+router.patch('/:id/order-status', requirePermission('orders:update'), (req, res) => {
   try {
     const existingItem = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
     if (!existingItem) {

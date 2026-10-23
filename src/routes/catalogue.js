@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db/database');
 const validateItem = require('../validators/itemValidator');
 const getStockStatus = require('../utils/stockStatus');
+const { requirePermission } = require('../auth/middleware');
 
 // GET /items - catalogue table
 router.get('/items', (req, res) => {
@@ -61,12 +62,12 @@ router.get('/items', (req, res) => {
 });
 
 // GET /items/new - add item form
-router.get('/items/new', (req, res) => {
+router.get('/items/new', requirePermission('items:write'), (req, res) => {
   res.render('items/new', { errors: [], item: {} });
 });
 
 // POST /items - create item
-router.post('/items', (req, res) => {
+router.post('/items', requirePermission('items:write'), (req, res) => {
   const errors = validateItem(req.body);
   const { name, category, price, quantity, reorder_threshold } = req.body;
   const itemData = { name, category, price, quantity, reorder_threshold };
@@ -113,7 +114,7 @@ router.post('/items', (req, res) => {
 });
 
 // GET /items/:id/edit - edit item form
-router.get('/items/:id/edit', (req, res) => {
+router.get('/items/:id/edit', requirePermission('items:write'), (req, res) => {
   try {
     const item = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
     if (!item) {
@@ -126,7 +127,7 @@ router.get('/items/:id/edit', (req, res) => {
 });
 
 // POST /items/:id - update item
-router.post('/items/:id', (req, res) => {
+router.post('/items/:id', requirePermission('items:write'), (req, res) => {
   const errors = validateItem(req.body);
   const { name, category, price, quantity, reorder_threshold, order_status, expected_date } = req.body;
   const itemData = {
