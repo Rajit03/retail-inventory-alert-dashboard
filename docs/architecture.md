@@ -61,8 +61,9 @@ flowchart TD
 
 | Component | Technology / Tool | Version | Role in Architecture |
 | :--- | :--- | :--- | :--- |
-| **Application Core** | Node.js / Express | Node 22.x / Express 4.x | REST API, dynamic server-side templating (EJS), business rules & alerts. |
-| **Database Engine** | SQLite (`better-sqlite3`) | v11.x | File-based transactional relational storage with schema migrations and seed data. |
+| **Application Core** | Node.js / Express | Node 22.x / Express 5.x | REST API, dynamic server-side templating (EJS), business rules & alerts. |
+| **Authentication & RBAC**| `bcryptjs`, `cookie-session`, custom CSRF | Cost 12 / 8h Sessions | Multi-role access control (`manager`, `staff`, `purchasing`), session validation, brute force rate limiting. |
+| **Database Engine** | SQLite (`better-sqlite3`) | v11.x | File-based transactional relational storage with schema migrations (including `users`), and seed data. |
 | **Source Control** | Git & GitHub | Git 2.x | Distributed version control, branch protection, pull request reviews. |
 | **CI Automation** | Jenkins Pipeline | Jenkins 2.x (Agent: Local Windows) | Pipeline orchestrator, executing automated builds, tests, container releases, and Ansible triggers. |
 | **UI Testing Gate** | Selenium WebDriver + JUnit | Selenium 4.x / Maven 3.9.x / JDK 21 | Automated headless Chrome browser testing gate validating full CRUD and alert UX workflows. |
@@ -116,9 +117,23 @@ flowchart TD
 
 ---
 
-## 6. Git Branching Model & Delivery Strategy
+## 6. Security Architecture & Role-Based Access Control
+
+The application implements defense-in-depth protection across all layers:
+- **Authentication**: Stateful signed session cookies managed by `cookie-session`, secured with `httpOnly`, `sameSite: lax`, 8-hour expiry, signed with a high-entropy `SESSION_SECRET`.
+- **Role Hierarchy**:
+  - `manager`: Full permissions (`items:read`, `items:write`, `items:delete`, `transactions:read`, `transactions:write`, `alerts:read`, `orders:update`).
+  - `staff`: Operational permissions (`items:read`, `items:write`, `transactions:read`, `transactions:write`, `alerts:read`, `orders:update`).
+  - `purchasing`: Procurement-focused permissions (`items:read`, `transactions:read`, `alerts:read`, `orders:update`).
+- **CSRF Defense**: Cryptographic random token generated on session establishment; non-GET requests require matching `_csrf` form payload or `x-csrf-token` header (exempting `POST /api/login`).
+- **Brute Force Protection**: IP rate-limiting via `express-rate-limit` (5 failed logins per minute per IP -> HTTP 429).
+- **Public Surface Area**: Strict whitelist permitting only `/health`, `/login`, `POST /api/login`, and `/public/*`. Unauthenticated requests redirect to `/login?next=...` for HTML routes or respond with 401 JSON for `/api/*`.
+
+---
+
+## 7. Git Branching Model & Delivery Strategy
 
 - **`main`**: Production-ready releases. Only updated via pull requests from `develop` accompanied by release tags.
 - **`develop`**: Integration branch containing verified features. All pull requests are merged here after passing pipeline verification.
-- **`feature/<name>`**: Isolated feature branches branched from `develop` (e.g., `feature/final-release`).
+- **`feature/<name>`**: Isolated feature branches branched from `develop` (e.g., `feature/login-roles`).
 - **Pipeline Trigger**: Jenkins monitors `develop` via `pollSCM('H/2 * * * *')`. When changes are detected, a full automated build and verification run is executed.

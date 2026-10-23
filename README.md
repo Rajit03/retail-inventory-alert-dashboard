@@ -6,11 +6,12 @@ A resilient, containerized, full-stack retail inventory and replenishment tracki
 
 ## 1. Feature List
 
-- **Item Catalogue Management**: Create, update, list, and view retail items with SKU, name, category, price, and threshold parameters.
+- **Application Authentication & RBAC**: Multi-role security (`manager`, `staff`, `purchasing`) with `bcryptjs` password hashing (cost 12), signed `cookie-session`, custom synchronized CSRF protection, and brute-force rate limiting.
+- **Item Catalogue Management**: Create, update, list, and view retail items with SKU, name, category, price, and threshold parameters (role-governed).
 - **Stock Transactions & Validation**: Real-time recording of stock receipts (IN) and deductions (OUT), with strict server-side validation preventing negative balances or invalid stock deductions.
 - **Search & Category Filtering**: Fast keyword search and multi-category filtering for rapid inventory lookup.
-- **Automated Exception Alerts**: Dynamic status calculation marking items as **NORMAL**, **LOW STOCK**, or **OUT OF STOCK**, accompanied by dedicated exception alert dashboards.
-- **RESTful API**: Comprehensive JSON endpoints (`/api/items`, `/api/transactions`, `/api/alerts`, `/health`) supporting headless consumption and monitoring.
+- **Automated Exception Alerts**: Dynamic status calculation marking items as **NORMAL**, **LOW STOCK**, or **OUT OF STOCK**, accompanied by dedicated replenishment tracking.
+- **RESTful API**: Comprehensive JSON endpoints (`/api/items`, `/api/transactions`, `/api/alerts`, `/api/login`, `/health`) supporting headless consumption and monitoring.
 - **Dual Continuous Deployment**: Simultaneous automated deployment to containerized Docker runtime environments and Ansible-managed Linux systemd service nodes.
 - **Self-Healing Rollback**: Automated zero-downtime rollback to the last verified stable release upon deployment or health check failure.
 
@@ -174,16 +175,17 @@ Follow the 12-minute timed walkthrough documented in [docs/demo-runbook.md](file
 
 Comprehensive engineering documents located under `docs/`:
 
-- [docs/architecture.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/architecture.md) — System architecture, Mermaid delivery diagrams, and port map.
-- [docs/troubleshooting-guide.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/troubleshooting-guide.md) — Diagnosis matrix for 17 real operational issues and Jenkins stage failure triage.
+- [docs/security-and-roles.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/security-and-roles.md) — Security & RBAC specification (`manager`, `staff`, `purchasing`), CSRF, sessions, rate-limiting, and secret rotation.
+- [docs/architecture.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/architecture.md) — System architecture, Mermaid delivery diagrams, security layers, and port map.
+- [docs/troubleshooting-guide.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/troubleshooting-guide.md) — Diagnosis matrix for 21 real operational issues and Jenkins stage failure triage.
 - [docs/limitations-and-future-enhancements.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/limitations-and-future-enhancements.md) — Honest analysis of local limitations and prioritized future roadmap.
-- [docs/demo-runbook.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/demo-runbook.md) — 12-minute timed presentation script and pre-flight checklist.
-- [docs/viva-qa.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/viva-qa.md) — 30 comprehensive technical viva questions and answers.
+- [docs/demo-runbook.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/demo-runbook.md) — 12-minute timed presentation script, pre-flight checklist, and RBAC walkthrough.
+- [docs/viva-qa.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/viva-qa.md) — 35 comprehensive technical viva questions and answers across all DevOps domains.
 - [docs/pipeline-setup.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/pipeline-setup.md) — Jenkins declarative pipeline reference and parameters.
 - [docs/docker-lifecycle.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/docker-lifecycle.md) — Multi-stage Dockerfile design and registry management.
-- [docs/configuration-specification.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/configuration-specification.md) — Ansible roles, Jinja2 templates, and systemd specs.
+- [docs/configuration-specification.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/configuration-specification.md) — Ansible roles, Jinja2 templates, secrets passing, and systemd specs.
 - [docs/reliability-validation.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/reliability-validation.md) — Idempotency and fault-injection rollback test logs.
-- [docs/selenium-test-plan.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/selenium-test-plan.md) — Selenium POM architecture and test plan.
+- [docs/selenium-test-plan.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/selenium-test-plan.md) — Selenium POM architecture and 7 critical user journey test plans.
 - [docs/ci-setup.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/ci-setup.md) — Initial CI service configuration guide.
 - [docs/task14/summary.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/task14/summary.md) — Task 14 Ansible provisioning and rollback experiment logs.
 - [docs/release-notes-v2.0.0.md](file:///c:/Projects/retail-inventory-alert-dashboard/docs/release-notes-v2.0.0.md) — Final v2.0.0 DevOps release notes.
@@ -196,7 +198,7 @@ Comprehensive engineering documents located under `docs/`:
 ```text
 retail-inventory-alert-dashboard/
 ├── .gitattributes              # LF line-ending enforcement for Linux files
-├── .gitignore                  # Ignore rules for logs, node_modules, *.db, *.tgz
+├── .gitignore                  # Ignore rules for logs, node_modules, *.db, *.tgz, secrets.*
 ├── Dockerfile                  # Multi-stage production container image definition
 ├── Jenkinsfile                 # Declarative 10-stage CI/CD pipeline definition
 ├── README.md                   # Project overview, quick start, and documentation index
@@ -211,12 +213,13 @@ retail-inventory-alert-dashboard/
 │   ├── rollback.yml            # Automated and manual rollback playbook
 │   ├── teardown.yml            # Environment cleanup playbook
 │   ├── inventory/              # Host inventory definitions and group vars
-│   └── roles/                  # Ansible modular roles (common, nginx, release)
+│   └── roles/                  # Ansible modular roles (common, nodejs, app_service, nginx, release)
 │
 ├── deploy/                     # Host configuration artifacts
 │   └── nginx/                  # Windows Nginx reverse proxy configurations
 │
 ├── docs/                       # Comprehensive architectural and operational docs
+│   ├── security-and-roles.md   # Security and RBAC documentation
 │   ├── architecture.md
 │   ├── troubleshooting-guide.md
 │   ├── limitations-and-future-enhancements.md
@@ -229,19 +232,22 @@ retail-inventory-alert-dashboard/
 ├── scripts/                    # Automation and lifecycle scripts
 │   ├── deploy-container.ps1    # Container deployment with port conflict cleanup
 │   ├── ensure-registry.ps1     # Docker registry startup script
+│   ├── init-secrets.ps1        # Generates secrets.env and secrets.yml with ACLs
 │   ├── node-ops.ps1            # Location-independent Ansible wrapper for WSL
-│   └── preflight.ps1           # System-wide preflight health validation
+│   ├── preflight.ps1           # System-wide preflight health validation
+│   └── run-selenium-ci.ps1     # Headless Selenium test runner for CI
 │
 ├── src/                        # Express application source code
 │   ├── app.js                  # Express middleware and routing initialization
 │   ├── server.js               # Application server entry point
+│   ├── auth/                   # Authentication, RBAC, hash, and CSRF middleware
 │   ├── db/                     # SQLite schema and seed scripts
-│   ├── routes/                 # Express route controllers (items, transactions, alerts)
+│   ├── routes/                 # Express route controllers (items, transactions, alerts, catalogue)
 │   ├── utils/                  # Helper utilities and stock calculation
 │   ├── validators/             # Request payload validation functions
-│   └── views/                  # EJS server-rendered templates
+│   └── views/                  # EJS server-rendered templates (including auth/)
 │
 └── tests/                      # Automated test suites
-    ├── unit/                   # Mocha unit tests for business logic
+    ├── unit/                   # Unit test suites (including auth.test.js)
     └── selenium/               # Maven + Java Selenium WebDriver UI test suite
 ```
