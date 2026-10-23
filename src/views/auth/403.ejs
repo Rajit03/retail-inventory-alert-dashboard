@@ -1,0 +1,19 @@
+<%- include('../partials/header', { title: '403 Forbidden' }) %>
+
+<div style="max-width: 580px; margin: 4rem auto; text-align: center;">
+  <div class="card" style="padding: 3rem 2rem;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">🚫</div>
+    <h1 style="font-size: 1.75rem; font-weight: 700; color: var(--danger-color); margin-bottom: 0.75rem;">
+      403 - Access Forbidden
+    </h1>
+    <p data-testid="forbidden-message" style="color: var(--text-muted); font-size: 1rem; margin-bottom: 2rem;">
+      <%= typeof message !== 'undefined' && message ? message : 'You do not have permission to access this resource.' %>
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+      <a href="/items" class="btn btn-primary">Go to Inventory</a>
+      <a href="/alerts" class="btn btn-secondary">View Alerts</a>
+    </div>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

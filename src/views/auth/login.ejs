@@ -1,0 +1,56 @@
+<%- include('../partials/header', { title: 'Login' }) %>
+
+<div style="max-width: 440px; margin: 3rem auto;">
+  <div class="card" style="padding: 2.5rem 2rem;">
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;">Sign In</h1>
+      <p style="color: var(--text-muted); font-size: 0.875rem;">Retail Inventory Alert Dashboard</p>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-danger" data-testid="login-error" style="margin-bottom: 1.5rem;">
+        <%= error %>
+      </div>
+    <% } %>
+
+    <form action="/login" method="POST">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <input type="hidden" name="next" value="<%= typeof next !== 'undefined' ? next : '' %>">
+
+      <div class="form-group">
+        <label for="username" class="form-label">Username</label>
+        <input 
+          type="text" 
+          id="username" 
+          name="username" 
+          data-testid="login-username" 
+          class="form-control" 
+          required 
+          autocomplete="username"
+          placeholder="manager, staff, or purchasing"
+          autofocus
+        >
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.75rem;">
+        <label for="password" class="form-label">Password</label>
+        <input 
+          type="password" 
+          id="password" 
+          name="password" 
+          data-testid="login-password" 
+          class="form-control" 
+          required 
+          autocomplete="current-password"
+          placeholder="Enter your password"
+        >
+      </div>
+
+      <button type="submit" class="btn btn-primary" data-testid="login-submit" style="width: 100%; padding: 0.75rem; font-size: 1rem;">
+        Sign In
+      </button>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

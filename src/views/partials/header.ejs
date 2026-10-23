@@ -18,9 +18,21 @@
           <li><a href="/items" class="nav-link">Item Catalogue</a></li>
           <li><a href="/transactions" class="nav-link">Transactions</a></li>
           <li><a href="/alerts" class="nav-link">Alerts</a></li>
-          <li><a href="/items/new" class="btn btn-primary btn-sm">+ Add Item</a></li>
+          <% if (typeof can === 'function' && can('items:write')) { %>
+            <li><a href="/items/new" class="btn btn-primary btn-sm">+ Add Item</a></li>
+          <% } %>
         </ul>
       </nav>
+      <% if (typeof user !== 'undefined' && user) { %>
+        <div class="user-nav">
+          <span class="user-greeting">Logged in as: <strong data-testid="user-name"><%= user.username %></strong></span>
+          <span class="badge user-badge badge-<%= user.role %>" data-testid="user-role"><%= user.role %></span>
+          <form action="/logout" method="POST" style="display: inline; margin: 0;">
+            <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+            <button type="submit" class="btn btn-secondary btn-sm" data-testid="logout-button">Logout</button>
+          </form>
+        </div>
+      <% } %>
     </div>
   </header>
   <main class="main-content">

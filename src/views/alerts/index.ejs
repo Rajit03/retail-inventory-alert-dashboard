@@ -21,9 +21,12 @@
           </div>
           <p data-testid="alert-message" style="color: var(--text-muted); font-size: 0.875rem; margin: 0;"><%= alert.message %></p>
         </div>
-        <div>
-          <a href="/items/<%= alert.item_id %>/edit" class="btn btn-secondary btn-sm">Manage Item</a>
-        </div>
+        <% if (typeof can === 'function' && can('items:write')) { %>
+          <div>
+            <a href="/items/<%= alert.item_id %>/edit" class="btn btn-secondary btn-sm">Manage Item</a>
+          </div>
+        <% } %>
+
       </div>
     <% }) %>
   </div>

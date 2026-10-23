@@ -281,3 +281,46 @@ body {
   background-color: var(--card-bg);
   margin-top: auto;
 }
+
+.user-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: 1rem;
+}
+
+.user-greeting {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.user-greeting strong {
+  color: var(--text-main);
+}
+
+.user-badge {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+}
+
+.badge-manager {
+  background-color: #ede9fe;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.badge-staff {
+  background-color: #d1fae5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.badge-purchasing {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
