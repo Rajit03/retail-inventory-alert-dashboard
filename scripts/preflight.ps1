@@ -201,6 +201,20 @@ foreach ($p in $monitoredPorts) {
 }
 Add-CheckResult -Component "Monitored Ports" -Status "INFO" -Details ($portSummary -join ", ")
 
+# Deployment Secrets Check
+$secretsEnvPath = "C:\deploy\retail-inventory\secrets.env"
+$secretsYmlPath = "C:\deploy\retail-inventory\secrets.yml"
+
+if ((Test-Path $secretsEnvPath) -and (Test-Path $secretsYmlPath)) {
+    Add-CheckResult -Component "Deployment Secrets" -Status "PASS" -Details "secrets.env and secrets.yml present in C:\deploy\retail-inventory"
+} else {
+    $missingSecrets = @()
+    if (-not (Test-Path $secretsEnvPath)) { $missingSecrets += "secrets.env" }
+    if (-not (Test-Path $secretsYmlPath)) { $missingSecrets += "secrets.yml" }
+    Add-CheckResult -Component "Deployment Secrets" -Status "FAIL" -Details "Missing $($missingSecrets -join ', ') in C:\deploy\retail-inventory; run scripts\init-secrets.ps1"
+}
+
+
 # Render Output Table
 Write-Host ""
 Write-Host "================================ PREFLIGHT ENVIRONMENT CHECK ================================" -ForegroundColor Cyan
