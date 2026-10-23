@@ -212,6 +212,15 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 script {
+                    def secretsEnv = "${params.DEPLOY_ROOT}\\secrets.env"
+                    def hasSecretsEnv = bat(
+                        script: "@powershell -NoProfile -Command \"Test-Path '${secretsEnv}'\"",
+                        returnStdout: true
+                    ).trim()
+                    if (hasSecretsEnv != 'True') {
+                        error("Required deployment secrets file missing: ${secretsEnv}. Run scripts/init-secrets.ps1 before deploying.")
+                    }
+
                     // Application ports
                     def appPort = (params.DEPLOY_ENV == 'staging') ? '3002' : '3001'
 
@@ -258,6 +267,15 @@ pipeline {
             }
             steps {
                 script {
+                    def secretsYml = "${params.DEPLOY_ROOT}\\secrets.yml"
+                    def hasSecretsYml = bat(
+                        script: "@powershell -NoProfile -Command \"Test-Path '${secretsYml}'\"",
+                        returnStdout: true
+                    ).trim()
+                    if (hasSecretsYml != 'True') {
+                        error("Required Ansible secrets file missing: ${secretsYml}. Run scripts/init-secrets.ps1 before deploying.")
+                    }
+
                     def pkgPath = bat(
                         script: '@powershell -NoProfile -Command "(Get-Item *.tgz | Select-Object -First 1).FullName"',
                         returnStdout: true

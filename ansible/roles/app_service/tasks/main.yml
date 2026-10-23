@@ -1,4 +1,14 @@
 ---
+- name: Assert deployment secrets are defined
+  ansible.builtin.assert:
+    that:
+      - (session_secret is defined and session_secret | length > 0) or (SESSION_SECRET is defined and SESSION_SECRET | length > 0)
+      - (seed_manager_password is defined and seed_manager_password | length >= 10) or (SEED_MANAGER_PASSWORD is defined and SEED_MANAGER_PASSWORD | length >= 10)
+      - (seed_staff_password is defined and seed_staff_password | length >= 10) or (SEED_STAFF_PASSWORD is defined and SEED_STAFF_PASSWORD | length >= 10)
+      - (seed_purchasing_password is defined and seed_purchasing_password | length >= 10) or (SEED_PURCHASING_PASSWORD is defined and SEED_PURCHASING_PASSWORD | length >= 10)
+    fail_msg: "Deployment secrets must be provided via -e @secrets.yml with valid lengths."
+  tags: ['app_service']
+
 - name: Install application environment file
   ansible.builtin.template:
     src: retail-inventory.env.j2
@@ -6,7 +16,9 @@
     owner: root
     group: "{{ app_group }}"
     mode: "0640"
+  no_log: true
   tags: ['app_service']
+
 
 - name: Install systemd unit
   ansible.builtin.template:

@@ -43,6 +43,15 @@ Write-Host "=========================================="
 
 $containerName = "retail-inventory-$Environment"
 $volumeName = "retail-inventory-$Environment-data"
+$secretsEnvFile = Join-Path $DeployRoot 'secrets.env'
+
+# Validate secrets file existence before proceeding
+if (-not (Test-Path $secretsEnvFile)) {
+    Write-Host "[ERROR] Deployment secrets file missing: $secretsEnvFile" -ForegroundColor Red
+    Write-Host "  Please run 'scripts\init-secrets.ps1' before deploying containers." -ForegroundColor Red
+    exit 1
+}
+Write-Host "  Using deployment secrets file: $secretsEnvFile"
 
 # (1) Pull image from registry
 Write-Host "`n[1/7] Pulling image from registry: $ImageRef..."
@@ -133,6 +142,7 @@ $dockerRunArgs = @(
     '--restart', 'unless-stopped',
     '-p', "${HostPort}:3000",
     '-v', "${volumeName}:/app/data",
+    '--env-file', $secretsEnvFile,
     '-e', 'NODE_ENV=production',
     '--label', "deploy.environment=$Environment",
     '--label', "deploy.build=$BuildNumber",
@@ -204,21 +214,25 @@ if (-not $isHealthy) {
     exit 1
 }
 
-# (6) Check /api/items and seed database if empty
-Write-Host "`n[6/7] Checking database status at http://localhost:$HostPort/api/items..."
+# (6) Check database status and seed if items table is empty
+Write-Host "`n[6/7] Checking database status inside container..."
 try {
-    $items = Invoke-RestMethod -Uri "http://localhost:$HostPort/api/items" -Method Get -TimeoutSec 5 -ErrorAction Stop
-    $isEmpty = ($null -eq $items) -or ($items.Count -eq 0) -or ($items -is [string] -and $items.Trim() -eq '[]')
-    if ($isEmpty) {
-        Write-Host "  Database is empty. Seeding initial data with 'npm run seed'..."
-        & docker exec $containerName npm run seed
-        Write-Host "  Database seeded successfully."
+    $dbCheck = (& docker exec $containerName node -e "const db = require('./src/db/database'); const count = db.prepare('SELECT COUNT(*) AS c FROM items').get().c; console.log(count);" 2>$null | Out-String).Trim()
+    if ($dbCheck -match '^\d+$') {
+        $count = [int]$dbCheck
+        if ($count -eq 0) {
+            Write-Host "  Database is empty. Seeding initial data with 'npm run seed'..."
+            & docker exec $containerName npm run seed
+            Write-Host "  Database seeded successfully."
+        } else {
+            Write-Host "  Database already contains data ($count items). Skipping seed."
+        }
     } else {
-        $count = if ($items.Count) { $items.Count } else { 'N/A' }
-        Write-Host "  Database already contains data ($count items). Skipping seed."
+        Write-Host "  Executing seed as precaution..."
+        & docker exec $containerName npm run seed
     }
 } catch {
-    Write-Host "  Warning: Failed to verify /api/items: $_. Executing seed as precaution..."
+    Write-Host "  Warning: Failed to verify items table. Executing seed as precaution..."
     & docker exec $containerName npm run seed
 }
 
