@@ -77,6 +77,12 @@ public class ItemCatalogPage {
         wait.until(ExpectedConditions.elementToBeClickable(addNewItemButton)).click();
     }
 
+    public boolean hasAddNewItemButton() {
+        List<WebElement> buttons = driver.findElements(addNewItemButton);
+        return !buttons.isEmpty() && buttons.get(0).isDisplayed();
+    }
+
+
     public boolean hasItem(String itemName) {
         for (int i = 0; i < 3; i++) {
             try {
