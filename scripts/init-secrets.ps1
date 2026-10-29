@@ -82,10 +82,10 @@ SEED_STAFF_PASSWORD: "$staffPassword"
 [System.IO.File]::WriteAllText($secretsEnv, $envContent, [System.Text.Encoding]::ASCII)
 [System.IO.File]::WriteAllText($secretsYml, $ymlContent, [System.Text.Encoding]::ASCII)
 
-# Restrict file permissions to current Windows user using icacls
+# Restrict file permissions to current Windows user, SYSTEM, and Administrators using icacls
 $currentUser = "$env:USERDOMAIN\$env:USERNAME"
-& icacls.exe $secretsEnv /inheritance:r /grant:r "${currentUser}:(F)" 2>$null | Out-Null
-& icacls.exe $secretsYml /inheritance:r /grant:r "${currentUser}:(F)" 2>$null | Out-Null
+& icacls.exe $secretsEnv /inheritance:r /grant:r "${currentUser}:(F)" "NT AUTHORITY\SYSTEM:(F)" "BUILTIN\Administrators:(F)" 2>$null | Out-Null
+& icacls.exe $secretsYml /inheritance:r /grant:r "${currentUser}:(F)" "NT AUTHORITY\SYSTEM:(F)" "BUILTIN\Administrators:(F)" 2>$null | Out-Null
 
 Write-Host "`n========================================================" -ForegroundColor Cyan
 Write-Host " Deployment Secrets Initialized" -ForegroundColor Cyan
