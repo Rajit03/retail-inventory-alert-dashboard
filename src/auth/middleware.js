@@ -86,7 +86,7 @@ function sanitizeNext(nextPath) {
 }
 
 function getLandingPage(role, next) {
-  const defaultPage = role === 'purchasing' ? '/alerts' : '/items';
+  const defaultPage = '/items';
   const cleanNext = sanitizeNext(next);
   if (!cleanNext || cleanNext === '/login' || cleanNext === '/logout') {
     return defaultPage;

@@ -7,36 +7,33 @@ The Retail Inventory Alert Dashboard implements application authentication and r
 
 ## 2. Role and Permissions Matrix
 
-The application defines three built-in roles: `manager`, `staff`, and `purchasing`.
+The application defines two built-in roles: `manager` and `staff`.
 
-| Resource / Action | Method | Route / Endpoint | Manager | Staff | Purchasing | Unauthenticated |
-| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
-| **Health Check** | GET | `/health` | Allowed | Allowed | Allowed | Allowed (Public) |
-| **Login Page** | GET | `/login` | Allowed | Allowed | Allowed | Allowed (Public) |
-| **Login Submit** | POST | `/login` | Allowed | Allowed | Allowed | Allowed (Public) |
-| **API Login** | POST | `/api/login` | Allowed | Allowed | Allowed | Allowed (Public) |
-| **Static Assets** | GET | `/public/*` | Allowed | Allowed | Allowed | Allowed (Public) |
-| **Logout** | POST | `/logout` | Allowed | Allowed | Allowed | 302 to `/login` |
-| **User Profile / CSRF** | GET | `/api/me` | Allowed | Allowed | Allowed | 401 Unauthorized |
-| **View Catalog** | GET | `/items`, `/` | Allowed | Allowed | Allowed | 302 to `/login` |
-| **View Inventory JSON** | GET | `/api/items` | Allowed | Allowed | Allowed | 401 Unauthorized |
-| **New Item Page** | GET | `/items/new` | Allowed | Allowed | 403 Forbidden | 302 to `/login` |
-| **Create Item** | POST | `/items` | Allowed | Allowed | 403 Forbidden | 302 / 401 |
-| **Edit Item Page** | GET | `/items/:id/edit` | Allowed | Allowed | 403 Forbidden | 302 to `/login` |
-| **Update Item** | POST | `/items/:id` | Allowed | Allowed | 403 Forbidden | 302 / 401 |
-| **Delete Item** | POST | `/items/:id/delete` | Allowed | 403 Forbidden | 403 Forbidden | 302 / 401 |
-| **View Transactions** | GET | `/transactions` | Allowed | Allowed | Allowed | 302 to `/login` |
-| **New Transaction Page**| GET | `/transactions/new` | Allowed | Allowed | 403 Forbidden | 302 to `/login` |
-| **Record Transaction** | POST | `/transactions` | Allowed | Allowed | 403 Forbidden | 302 / 401 |
-| **View Low Stock Alerts**| GET | `/alerts` | Allowed | Allowed | Allowed | 302 to `/login` |
-| **View Alerts JSON** | GET | `/api/alerts` | Allowed | Allowed | Allowed | 401 Unauthorized |
-| **Update Order Status** | POST | `/alerts/:id/order` | Allowed | Allowed | Allowed | 302 / 401 |
+| Resource / Action | Method | Route / Endpoint | Manager | Staff | Unauthenticated |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Health Check** | GET | `/health` | Allowed | Allowed | Allowed (Public) |
+| **Login Page** | GET | `/login` | Allowed | Allowed | Allowed (Public) |
+| **Login Submit** | POST | `/login` | Allowed | Allowed | Allowed (Public) |
+| **API Login** | POST | `/api/login` | Allowed | Allowed | Allowed (Public) |
+| **Static Assets** | GET | `/public/*` | Allowed | Allowed | Allowed (Public) |
+| **Logout** | POST | `/logout` | Allowed | Allowed | 302 to `/login` |
+| **User Profile / CSRF** | GET | `/api/me` | Allowed | Allowed | 401 Unauthorized |
+| **View Catalog** | GET | `/items`, `/` | Allowed | Allowed | 302 to `/login` |
+| **View Inventory JSON** | GET | `/api/items` | Allowed | Allowed | 401 Unauthorized |
+| **New Item Page** | GET | `/items/new` | Allowed | Allowed | 302 to `/login` |
+| **Create Item** | POST | `/items` | Allowed | Allowed | 302 / 401 |
+| **Edit Item Page** | GET | `/items/:id/edit` | Allowed | Allowed | 302 to `/login` |
+| **Update Item** | POST | `/items/:id` | Allowed | Allowed | 302 / 401 |
+| **Delete Item** | POST | `/items/:id/delete` | Allowed | 403 Forbidden | 302 / 401 |
+| **View Transactions** | GET | `/transactions` | Allowed | Allowed | 302 to `/login` |
+| **New Transaction Page**| GET | `/transactions/new` | Allowed | Allowed | 302 to `/login` |
+| **Record Transaction** | POST | `/transactions` | Allowed | Allowed | 302 / 401 |
+| **View Low Stock Alerts**| GET | `/alerts` | Allowed | Allowed | 302 to `/login` |
+| **View Alerts JSON** | GET | `/api/alerts` | Allowed | Allowed | 401 Unauthorized |
+| **Update Order Status** | POST | `/alerts/:id/order` | Allowed | Allowed | 302 / 401 |
 
 ### Landing Page Routing
-Upon successful authentication, users are redirected based on their role:
-- **`manager`**: Redirected to `/items` (or requested `next` parameter if valid).
-- **`staff`**: Redirected to `/items` (or requested `next` parameter if valid).
-- **`purchasing`**: Redirected to `/alerts` (prioritized procurement workflow).
+Upon successful authentication, users are redirected to `/items` (or requested `next` parameter if valid).
 
 ---
 
@@ -60,10 +57,10 @@ Upon successful authentication, users are redirected based on their role:
   - `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
   - `username` (TEXT NOT NULL UNIQUE)
   - `password_hash` (TEXT NOT NULL)
-  - `role` (TEXT NOT NULL CHECK in `manager`, `staff`, `purchasing`)
+  - `role` (TEXT NOT NULL CHECK in `manager`, `staff`)
   - `created_at` (DATETIME DEFAULT CURRENT_TIMESTAMP)
 - **Automatic Migration**: Database initialization executes `CREATE TABLE IF NOT EXISTS users ...` ensuring compatibility with pre-existing databases without dropping data.
-- **Initial Seed**: If the `users` table is empty and `SEED_*_PASSWORD` environment variables are present and at least 10 characters long, accounts for `manager`, `staff`, and `purchasing` are automatically created on startup.
+- **Initial Seed**: If the `users` table is empty and `SEED_*_PASSWORD` environment variables are present and at least 10 characters long, accounts for `manager` and `staff` are automatically created on startup.
 
 ---
 

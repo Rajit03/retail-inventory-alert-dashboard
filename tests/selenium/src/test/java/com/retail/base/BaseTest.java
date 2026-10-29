@@ -61,10 +61,6 @@ public abstract class BaseTest {
         loginAs("staff", TestConfig.getStaffPassword());
     }
 
-    public void loginAsPurchasing() {
-        loginAs("purchasing", TestConfig.getPurchasingPassword());
-    }
-
     public void loginAs(String username, String password) {
         LoginPage loginPage = new LoginPage(driver, wait, baseUrl);
         loginPage.open();

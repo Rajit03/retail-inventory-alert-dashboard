@@ -17,7 +17,6 @@ describe('API Smoke Tests', () => {
     process.env.SESSION_SECRET = 'test-session-secret-smoke-test-1234';
     process.env.SEED_MANAGER_PASSWORD = 'TestManagerPassword123!';
     process.env.SEED_STAFF_PASSWORD = 'TestStaffPassword123!';
-    process.env.SEED_PURCHASING_PASSWORD = 'TestPurchasingPassword123!';
 
     // Delete pre-existing test DB if any
     if (fs.existsSync(tempDbPath)) {

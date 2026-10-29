@@ -1,6 +1,7 @@
 const PERMISSIONS = {
   manager: [
     'items:write',
+    'items:delete',
     'transactions:write',
     'orders:update',
     'items:read',
@@ -10,12 +11,6 @@ const PERMISSIONS = {
   staff: [
     'items:write',
     'transactions:write',
-    'orders:update',
-    'items:read',
-    'transactions:read',
-    'alerts:read'
-  ],
-  purchasing: [
     'orders:update',
     'items:read',
     'transactions:read',

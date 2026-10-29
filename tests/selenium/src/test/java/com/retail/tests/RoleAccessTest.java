@@ -23,7 +23,7 @@ public class RoleAccessTest extends BaseTest {
     }
 
     @Test
-    @DisplayName("J7: Role-Based Access Journey - Unauthenticated redirect, purchasing restrictions, staff capabilities")
+    @DisplayName("J7: Role-Based Access Journey - Unauthenticated redirect, staff permissions, and manager privileges")
     public void testRoleAccessAndPermissions() {
         LoginPage loginPage = new LoginPage(driver, wait, baseUrl);
         ItemCatalogPage catalogPage = new ItemCatalogPage(driver, wait, baseUrl);
@@ -34,29 +34,19 @@ public class RoleAccessTest extends BaseTest {
         wait.until(ExpectedConditions.urlContains("/login"));
         assertTrue(driver.getCurrentUrl().contains("/login"), "Expected unauthenticated /items to redirect to /login");
 
-        // 2. Purchasing does not see the "Add item" action and gets forbidden-message on /items/new
-        loginPage.open();
-        loginPage.login("purchasing", TestConfig.getPurchasingPassword());
-        wait.until(ExpectedConditions.urlMatches(".*/(items|alerts).*"));
-
-        // Navigate to /items and verify "Add item" is hidden
-        driver.get(baseUrl + "/items");
-        wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("[data-testid='search-input']")));
-        assertFalse(catalogPage.hasAddNewItemButton(), "Purchasing officer must not see the 'Add item' action");
-
-        // Attempt direct access to /items/new -> forbidden-message
-        driver.get(baseUrl + "/items/new");
-        WebElement forbidden = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("[data-testid='forbidden-message']")));
-        assertTrue(forbidden.isDisplayed(), "Expected forbidden-message on direct navigation to /items/new for purchasing role");
-
-        // Logout
-        loginPage.logout();
-
-        // 3. Staff can add an item
+        // 2. Staff login - can add an item, but Delete button is hidden
         loginPage.open();
         loginPage.login("staff", TestConfig.getStaffPassword());
         wait.until(ExpectedConditions.urlContains("/items"));
 
+        // Verify "+ Add Item" is visible for staff
+        assertTrue(catalogPage.hasAddNewItemButton(), "Staff member should see the 'Add item' action");
+
+        // Verify Delete button is hidden for staff
+        assertFalse(driver.findElements(By.cssSelector("[data-testid='delete-item-button']")).stream().anyMatch(WebElement::isDisplayed),
+                "Staff member must not see the 'Delete item' action");
+
+        // Staff creates an item
         ItemFormPage formPage = new ItemFormPage(driver, wait, baseUrl);
         formPage.open();
 
@@ -73,5 +63,17 @@ public class RoleAccessTest extends BaseTest {
         wait.until(ExpectedConditions.urlContains("/items"));
         wait.until(d -> catalogPage.hasItem(uniqueName));
         assertTrue(catalogPage.hasItem(uniqueName), "Expected staff member to successfully add an item to the catalogue");
+
+        // Logout staff
+        loginPage.logout();
+        wait.until(ExpectedConditions.urlContains("/login"));
+
+        // 3. Manager login - can see Delete button and delete item
+        loginPage.login("manager", TestConfig.getManagerPassword());
+        wait.until(ExpectedConditions.urlContains("/items"));
+
+        // Verify Delete button is present for manager
+        assertTrue(driver.findElements(By.cssSelector("[data-testid='delete-item-button']")).stream().anyMatch(WebElement::isDisplayed),
+                "Manager should see the 'Delete item' action");
     }
 }

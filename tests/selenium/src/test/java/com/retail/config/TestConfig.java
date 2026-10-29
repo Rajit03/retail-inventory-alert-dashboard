@@ -20,8 +20,4 @@ public class TestConfig {
     public static String getStaffPassword() {
         return System.getProperty("test.staff.password", "TestStaffPass123!");
     }
-
-    public static String getPurchasingPassword() {
-        return System.getProperty("test.purchasing.password", "TestPurchasingPass123!");
-    }
 }

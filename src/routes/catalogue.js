@@ -49,12 +49,28 @@ router.get('/items', (req, res) => {
       stock_status: getStockStatus(item)
     }));
 
+    let kpi = null;
+    if (req.session?.user?.role === 'manager') {
+      const allItems = db.prepare('SELECT price, quantity, reorder_threshold FROM items').all();
+      const totalSkus = allItems.length;
+      const totalValuation = allItems.reduce((acc, it) => acc + (it.price * it.quantity), 0);
+      const lowStockCount = allItems.filter(it => it.quantity > 0 && it.quantity <= it.reorder_threshold).length;
+      const outOfStockCount = allItems.filter(it => it.quantity === 0).length;
+      kpi = {
+        totalSkus,
+        totalValuation: totalValuation.toFixed(2),
+        lowStockCount,
+        outOfStockCount
+      };
+    }
+
     res.render('items/index', {
       items: itemsWithStatus,
       categories,
       search: search || '',
       category: category || '',
-      status: status || ''
+      status: status || '',
+      kpi
     });
   } catch (err) {
     res.status(500).send('Error loading items catalogue');
@@ -202,6 +218,26 @@ router.post('/items/:id', requirePermission('items:write'), (req, res) => {
       errors: ['Failed to update item. Please try again.'],
       item: itemData,
     });
+  }
+});
+
+// POST /items/:id/delete - delete item (manager only)
+router.post('/items/:id/delete', requirePermission('items:delete'), (req, res) => {
+  try {
+    const existing = db.prepare('SELECT id FROM items WHERE id = ?').get(req.params.id);
+    if (!existing) {
+      return res.status(404).send('Item not found');
+    }
+
+    const deleteTx = db.transaction(() => {
+      db.prepare('DELETE FROM transactions WHERE item_id = ?').run(req.params.id);
+      return db.prepare('DELETE FROM items WHERE id = ?').run(req.params.id);
+    });
+
+    deleteTx();
+    res.redirect('/items');
+  } catch (err) {
+    res.status(500).send('Error deleting item');
   }
 });
 

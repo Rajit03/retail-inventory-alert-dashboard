@@ -3,7 +3,7 @@
     Generates deployment secrets outside the repository for Docker and Ansible deployments.
 .DESCRIPTION
     Creates C:\deploy\retail-inventory\secrets.env and secrets.yml with cryptographically secure
-    SESSION_SECRET (48 chars) and random 16-character passwords for manager, staff, and purchasing.
+    SESSION_SECRET (48 chars) and random 16-character passwords for manager and staff.
     Restricts file ACLs to the current Windows user using icacls.
 .PARAMETER Force
     Prompts for confirmation before overwriting existing secrets files.
@@ -62,13 +62,11 @@ if (-not (Test-Path $DeployDir)) {
 $sessionSecret = Get-SecureRandomString -Length 48 -CharacterSet "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
 $managerPassword = Get-SecureRandomString -Length 16 -CharacterSet "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 $staffPassword = Get-SecureRandomString -Length 16 -CharacterSet "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-$purchasingPassword = Get-SecureRandomString -Length 16 -CharacterSet "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 $envContent = @"
 SESSION_SECRET=$sessionSecret
 SEED_MANAGER_PASSWORD=$managerPassword
 SEED_STAFF_PASSWORD=$staffPassword
-SEED_PURCHASING_PASSWORD=$purchasingPassword
 "@
 
 $ymlContent = @"
@@ -76,11 +74,9 @@ $ymlContent = @"
 session_secret: "$sessionSecret"
 seed_manager_password: "$managerPassword"
 seed_staff_password: "$staffPassword"
-seed_purchasing_password: "$purchasingPassword"
 SESSION_SECRET: "$sessionSecret"
 SEED_MANAGER_PASSWORD: "$managerPassword"
 SEED_STAFF_PASSWORD: "$staffPassword"
-SEED_PURCHASING_PASSWORD: "$purchasingPassword"
 "@
 
 [System.IO.File]::WriteAllText($secretsEnv, $envContent, [System.Text.Encoding]::ASCII)
@@ -98,7 +94,6 @@ Write-Host "========================================================" -Foregroun
 Write-Host "`nDemo Accounts Created:" -ForegroundColor Green
 Write-Host "  manager    : $managerPassword"
 Write-Host "  staff      : $staffPassword"
-Write-Host "  purchasing : $purchasingPassword"
 Write-Host "`nGenerated Files:" -ForegroundColor Yellow
 Write-Host "  - $secretsEnv"
 Write-Host "  - $secretsYml"

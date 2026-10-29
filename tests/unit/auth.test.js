@@ -14,8 +14,7 @@ describe('Authentication and Authorization Unit Tests', () => {
 
   const DUMMY_PASSWORDS = {
     manager: 'TestDummyManagerPass123!',
-    staff: 'TestDummyStaffPass123!',
-    purchasing: 'TestDummyPurchasingPass123!'
+    staff: 'TestDummyStaffPass123!'
   };
 
   before(async () => {
@@ -24,7 +23,6 @@ describe('Authentication and Authorization Unit Tests', () => {
     process.env.SESSION_SECRET = 'unit-test-session-secret-key-32chars';
     process.env.SEED_MANAGER_PASSWORD = DUMMY_PASSWORDS.manager;
     process.env.SEED_STAFF_PASSWORD = DUMMY_PASSWORDS.staff;
-    process.env.SEED_PURCHASING_PASSWORD = DUMMY_PASSWORDS.purchasing;
 
     if (fs.existsSync(tempDbPath)) {
       try { fs.unlinkSync(tempDbPath); } catch (_) {}
@@ -115,27 +113,20 @@ describe('Authentication and Authorization Unit Tests', () => {
       assert.strictEqual(can('manager', 'any:custom:action'), true);
     });
 
-    it('staff can write items, write transactions, and update orders', () => {
+    it('staff can write items, write transactions, and update orders, but cannot delete items', () => {
       assert.strictEqual(can('staff', 'items:write'), true);
       assert.strictEqual(can('staff', 'transactions:write'), true);
       assert.strictEqual(can('staff', 'orders:update'), true);
       assert.strictEqual(can('staff', 'items:read'), true);
       assert.strictEqual(can('staff', 'transactions:read'), true);
       assert.strictEqual(can('staff', 'alerts:read'), true);
+      assert.strictEqual(can('staff', 'items:delete'), false);
       assert.strictEqual(can('staff', 'admin:super'), false);
     });
 
-    it('purchasing can update orders and view, but cannot write items or transactions', () => {
-      assert.strictEqual(can('purchasing', 'orders:update'), true);
-      assert.strictEqual(can('purchasing', 'items:read'), true);
-      assert.strictEqual(can('purchasing', 'transactions:read'), true);
-      assert.strictEqual(can('purchasing', 'alerts:read'), true);
-      assert.strictEqual(can('purchasing', 'items:write'), false);
-      assert.strictEqual(can('purchasing', 'transactions:write'), false);
-      assert.strictEqual(can('purchasing', 'admin:super'), false);
-    });
-
-    it('unknown role or missing inputs return false', () => {
+    it('unknown role, purchasing (removed), or missing inputs return false', () => {
+      assert.strictEqual(can('purchasing', 'items:read'), false);
+      assert.strictEqual(can('purchasing', 'orders:update'), false);
       assert.strictEqual(can('guest', 'items:read'), false);
       assert.strictEqual(can(null, 'items:read'), false);
       assert.strictEqual(can('manager', null), false);
@@ -208,39 +199,20 @@ describe('Authentication and Authorization Unit Tests', () => {
     });
   });
 
-  // 6. Purchasing creating an item -> 403
-  // 7. Purchasing updating order status -> allowed
+  // 6. Role-based authorization tests
+  // 7. Staff updating order status -> allowed
   // 8. Staff creating an item -> allowed
   // 10. Missing CSRF token on a POST -> 403
   describe('Role-Based Authorization and CSRF Protection', () => {
-    let purchasingSession;
     let staffSession;
+    let managerSession;
     let createdItemId;
 
     before(async () => {
-      purchasingSession = await apiLogin('purchasing', DUMMY_PASSWORDS.purchasing);
       staffSession = await apiLogin('staff', DUMMY_PASSWORDS.staff);
-      assert.strictEqual(purchasingSession.status, 200);
+      managerSession = await apiLogin('manager', DUMMY_PASSWORDS.manager);
       assert.strictEqual(staffSession.status, 200);
-    });
-
-    it('purchasing role creating an item returns 403', async () => {
-      const res = await fetch(`${baseUrl}/api/items`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Cookie: purchasingSession.cookie,
-          'x-csrf-token': purchasingSession.csrfToken
-        },
-        body: JSON.stringify({
-          name: 'Purchasing Forbidden Item',
-          category: 'Test',
-          price: 9.99,
-          quantity: 10,
-          reorder_threshold: 5
-        })
-      });
-      assert.strictEqual(res.status, 403);
+      assert.strictEqual(managerSession.status, 200);
     });
 
     it('staff role creating an item is allowed (returns 201)', async () => {
@@ -265,14 +237,14 @@ describe('Authentication and Authorization Unit Tests', () => {
       assert.strictEqual(item.name, 'Staff Created Item');
     });
 
-    it('purchasing role updating order status is allowed', async () => {
+    it('staff role updating order status is allowed', async () => {
       assert.ok(createdItemId, 'createdItemId must exist');
       const res = await fetch(`${baseUrl}/api/items/${createdItemId}/order-status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          Cookie: purchasingSession.cookie,
-          'x-csrf-token': purchasingSession.csrfToken
+          Cookie: staffSession.cookie,
+          'x-csrf-token': staffSession.csrfToken
         },
         body: JSON.stringify({
           order_status: 'ORDERED',
@@ -283,6 +255,32 @@ describe('Authentication and Authorization Unit Tests', () => {
       const updated = await res.json();
       assert.strictEqual(updated.order_status, 'ORDERED');
       assert.strictEqual(updated.expected_date, '2026-12-31');
+    });
+
+    it('staff role deleting an item returns 403', async () => {
+      assert.ok(createdItemId, 'createdItemId must exist');
+      const res = await fetch(`${baseUrl}/api/items/${createdItemId}`, {
+        method: 'DELETE',
+        headers: {
+          Cookie: staffSession.cookie,
+          'x-csrf-token': staffSession.csrfToken
+        }
+      });
+      assert.strictEqual(res.status, 403);
+    });
+
+    it('manager role deleting an item is allowed (returns 200)', async () => {
+      assert.ok(createdItemId, 'createdItemId must exist');
+      const res = await fetch(`${baseUrl}/api/items/${createdItemId}`, {
+        method: 'DELETE',
+        headers: {
+          Cookie: managerSession.cookie,
+          'x-csrf-token': managerSession.csrfToken
+        }
+      });
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.strictEqual(data.message, 'Item deleted successfully');
     });
 
     it('missing CSRF token on a POST returns 403', async () => {

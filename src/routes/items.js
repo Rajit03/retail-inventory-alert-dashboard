@@ -204,4 +204,24 @@ router.patch('/:id/order-status', requirePermission('orders:update'), (req, res)
   }
 });
 
+// DELETE /api/items/:id - delete item (manager only)
+router.delete('/:id', requirePermission('items:delete'), (req, res) => {
+  try {
+    const existing = db.prepare('SELECT id FROM items WHERE id = ?').get(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Item not found' });
+    }
+
+    const deleteTx = db.transaction(() => {
+      db.prepare('DELETE FROM transactions WHERE item_id = ?').run(req.params.id);
+      return db.prepare('DELETE FROM items WHERE id = ?').run(req.params.id);
+    });
+
+    deleteTx();
+    return res.status(200).json({ message: 'Item deleted successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to delete item' });
+  }
+});
+
 module.exports = router;

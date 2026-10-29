@@ -6,7 +6,7 @@ function migrateUsers(db) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT NOT NULL UNIQUE,
         password_hash TEXT NOT NULL,
-        role TEXT NOT NULL CHECK(role IN ('manager', 'staff', 'purchasing')),
+        role TEXT NOT NULL CHECK(role IN ('manager', 'staff')),
         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -20,25 +20,22 @@ function seedUsers(db) {
 
   const mgrPass = process.env.SEED_MANAGER_PASSWORD;
   const staffPass = process.env.SEED_STAFF_PASSWORD;
-  const purchPass = process.env.SEED_PURCHASING_PASSWORD;
 
   const validMgr = typeof mgrPass === 'string' && mgrPass.length >= 10;
   const validStaff = typeof staffPass === 'string' && staffPass.length >= 10;
-  const validPurch = typeof purchPass === 'string' && purchPass.length >= 10;
 
-  if (validMgr && validStaff && validPurch) {
+  if (validMgr && validStaff) {
     const insert = db.prepare('INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)');
     const seedTx = db.transaction(() => {
       insert.run('manager', hashPasswordSync(mgrPass), 'manager');
       insert.run('staff', hashPasswordSync(staffPass), 'staff');
-      insert.run('purchasing', hashPasswordSync(purchPass), 'purchasing');
     });
     seedTx();
-    console.log('Seeded default users (manager, staff, purchasing).');
+    console.log('Seeded default users (manager, staff).');
   } else {
     console.warn(
       'Warning: Users table is empty but default users were not seeded. ' +
-      'SEED_MANAGER_PASSWORD, SEED_STAFF_PASSWORD, and SEED_PURCHASING_PASSWORD must all be defined with at least 10 characters.'
+      'SEED_MANAGER_PASSWORD and SEED_STAFF_PASSWORD must all be defined with at least 10 characters.'
     );
   }
 }

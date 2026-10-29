@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role TEXT NOT NULL CHECK(role IN ('manager', 'staff', 'purchasing')),
+    role TEXT NOT NULL CHECK(role IN ('manager', 'staff')),
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
